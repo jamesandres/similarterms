@@ -9,6 +9,31 @@
  */
 
 /**
+* Display help and module information
+* @param path which path of the site we're displaying help
+* @param arg array that holds the current path as would be returned from arg() function
+* @return help text for the path
+*/
+function similarterms_help($path, $arg) {
+  $output = '';
+  switch ($path) {
+    case "admin/help#similarterms":
+      $output = '<p>'.  t("Displays a block with similar content based on taxonomy terms.") .'</p>';
+      break;
+  }
+  return $output;
+} // function similarterms_help
+
+/**
+ * Valid permissions for this module
+ * @return array An array of valid permissions for the onthisdate module
+ */
+function similarterms_perm() {
+  return array('access similarterms content', 'administer similarterms content');
+} // function similarterms_perm()
+
+
+/**
  * Implementation of hook_block().
  */
 function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
@@ -40,11 +65,11 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
   else if ($op == 'view') {
     if ($delta == 0) {
       $block['subject'] = t('Similar');
-      $block['content'] = theme_similarterms(similarterms_list());
+      $block['content'] = theme('similarterms', similarterms_list());
     }
     else {
       $block['subject'] = t('Similar');
-      $block['content'] = theme_similarterms(similarterms_list($delta));
+      $block['content'] = theme('similarterms', similarterms_list($delta));
     }
     return $block;
   }
@@ -69,10 +94,12 @@ function similarterms_list($vid = NULL, $nid = NULL, $count = 5) {
   $nodes = array();
   if (!is_null($nid)) {
     if (!is_null($vid)) {
-      $terms = implode(',', array_keys(taxonomy_node_get_terms_by_vocabulary($nid, $vid)));
+      $terms = implode(',', array_keys(taxonomy_node_get_terms_by_vocabulary(node_load($nid), $vid)));
+      $count = variable_get('simterms_count_'. $vid, 5);
     }
     else {
-      $terms = implode(',', array_keys(taxonomy_node_get_terms($nid)));
+      $terms = implode(',', array_keys(taxonomy_node_get_terms(node_load($nid))));
+      $count = variable_get('simterms_count_0', 5);
     }
     if (!empty($terms)) {
       //past events
@@ -99,18 +126,13 @@ function similarterms_list($vid = NULL, $nid = NULL, $count = 5) {
 
 /**
  * Theme function for similar block
- * note that $nodes is a list of node parts from the 'node' data
- * these are not complete node_load() objects
  *
- * @param array $nodes
  */
-function theme_similarterms($nodes) {
-  if (!empty($nodes)) {
-    $output .= "<ul>\n";
-    foreach ($nodes as $node) {
-      $output .= '<li>'. l($node->title, 'node/'. $node->nid) ."</li>\n";
-    }
-    $output .= "</ul>\n";
-  }
-  return $output;
+function similarterms_theme() {
+  return array(
+    'similarterms' => array(
+      'template'  => 'similarterms',
+      'arguments' => array('items' => NULL),
+       ),
+  );
 }
