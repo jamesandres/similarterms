@@ -1,0 +1,116 @@
+<?php
+// $Id$
+// by Jeff Robbins
+
+/**
+ * @file
+ * Similar By Terms module displays a block with similar content
+ * based on taxonomy terms.
+ */
+
+/**
+ * Implementation of hook_block().
+ */
+function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
+  if ($op == 'list') {
+    $blocks[]['info'] = t('Similar entries from ANY vocabulary.');
+    foreach (taxonomy_get_vocabularies() as $v) {
+      // this only makes sense for multi-select vocabularies and free tagging
+      if ($v->multiple || $v->tags) {
+        $blocks[$v->vid]['info'] = t('Similar entries from the @vocab vocabulary.', array('@vocab' => $v->name));
+      }
+      
+    }
+    return $blocks;
+  }
+  else if ($op == 'configure') {
+    $form['count'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Item count'),
+      '#default_value' => variable_get('simterms_count_'. $delta, 5),
+      '#size' => 3,
+      '#description' => t('The maximum number of similar items to display'),
+    );
+    return $form; 
+    
+  }
+  else if ($op == 'save') {
+    variable_set('simterms_count_'. $delta, $edit['count']); 
+  }
+  else if ($op == 'view') {
+    if ($delta == 0) {
+      $block['subject'] = t('Similar');
+      $block['content'] = theme_similarterms(similarterms_list());
+    }
+    else {
+      $block['subject'] = t('Similar');
+      $block['content'] = theme_similarterms(similarterms_list($delta));
+    }
+    return $block;
+  }
+}
+
+/**
+ * Output the block
+ *
+ * @param $vid
+ *   integer - vocabulary id, leave out to use ALL terms for this node
+ * @param $nid
+ *   integer - node id, leave out to use current page
+ * @param $count
+ *   integer - how many nodes should we return?
+ * @return
+ *   an array of partial node objects (containing just the parts from the node table)
+ */
+function similarterms_list($vid = NULL, $nid = NULL, $count = 5) {
+  if (is_null($nid) && (arg(0) == 'node' && is_numeric(arg(1)))) {
+    $nid = arg(1);
+  }
+  $nodes = array();
+  if (!is_null($nid)) {
+    if (!is_null($vid)) {
+      $terms = implode(',', array_keys(taxonomy_node_get_terms_by_vocabulary($nid, $vid)));
+    }
+    else {
+      $terms = implode(',', array_keys(taxonomy_node_get_terms($nid)));
+    }
+    if (!empty($terms)) {
+      //past events
+      $pasts = array();
+      $result = db_query(
+      'SELECT n.nid, n.title, COUNT(n.nid) AS ncount
+        FROM {node} n
+        INNER JOIN {term_node} tn ON n.nid = tn.nid
+        WHERE tn.tid IN (%s)
+          AND n.nid != %d
+          AND n.status = 1
+          AND n.moderate = 0
+        GROUP BY n.nid, n.title, n.created
+        ORDER BY ncount DESC, n.created DESC
+        LIMIT %d'
+        , $terms, $nid, $count);
+      while ($r = db_fetch_object($result)) {
+        $nodes[] = $r;
+      }
+    }
+  }
+  return $nodes;
+}
+
+/**
+ * Theme function for similar block
+ * note that $nodes is a list of node parts from the 'node' data
+ * these are not complete node_load() objects
+ *
+ * @param array $nodes
+ */
+function theme_similarterms($nodes) {
+  if (!empty($nodes)) {
+    $output .= "<ul>\n";
+    foreach ($nodes as $node) {
+      $output .= '<li>'. l($node->title, 'node/'. $node->nid) ."</li>\n";
+    }
+    $output .= "</ul>\n";
+  }
+  return $output;
+}
