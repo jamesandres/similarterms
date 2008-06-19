@@ -44,7 +44,6 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
       if ($v->multiple || $v->tags) {
         $blocks[$v->vid]['info'] = t('Similar entries from the @vocab vocabulary.', array('@vocab' => $v->name));
       }
-      
     }
     return $blocks;
   }
@@ -57,7 +56,6 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
       '#description' => t('The maximum number of similar items to display'),
     );
     return $form; 
-    
   }
   else if ($op == 'save') {
     variable_set('simterms_count_'. $delta, $edit['count']); 
@@ -117,7 +115,7 @@ function similarterms_list($vid = NULL, $nid = NULL, $count = 5) {
         LIMIT %d'
         , $terms, $nid, $count);
       while ($r = db_fetch_object($result)) {
-        $nodes[] = $r;
+        $nodes[] = node_load($r->nid);
       }
     }
   }
