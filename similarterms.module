@@ -80,12 +80,10 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
  *   integer - vocabulary id, leave out to use ALL terms for this node
  * @param $nid
  *   integer - node id, leave out to use current page
- * @param $count
- *   integer - how many nodes should we return?
  * @return
  *   an array of partial node objects (containing just the parts from the node table)
  */
-function similarterms_list($vid = NULL, $nid = NULL, $count = 5) {
+function similarterms_list($vid = NULL, $nid = NULL) {
   if (is_null($nid) && (arg(0) == 'node' && is_numeric(arg(1)))) {
     $nid = arg(1);
   }
