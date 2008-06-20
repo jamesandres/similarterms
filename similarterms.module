@@ -61,7 +61,6 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
     foreach($arrTypesObj as $type=>$obj) {
       $types[$type] = $obj->name;
     }
-
     $form['sametype'] = array(
       '#type' => 'select',
       '#title' => t('Content type limit'),
