@@ -55,10 +55,26 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
       '#size' => 3,
       '#description' => t('The maximum number of similar items to display'),
     );
+    //mimo addition to configuration to limit to same page type
+    $types = array('0'=>'<none>','1'=>t('same as current'));
+    $arrTypesObj = node_get_types();
+    foreach($arrTypesObj as $type=>$obj) {
+      $types[$type] = $obj->name;
+    }
+
+    $form['sametype'] = array(
+      '#type' => 'select',
+      '#title' => t('Content type limit'),
+      '#default_value' => variable_get('simterms_sametype_'. $delta, false),
+      '#options' => $types,
+      '#description' => t('Limit to pages of this or these content type(s)'),
+      '#multiple' => TRUE
+    );
     return $form; 
   }
   else if ($op == 'save') {
     variable_set('simterms_count_'. $delta, $edit['count']); 
+    variable_set('simterms_sametype_'. $delta, $edit['sametype']);
   }
   else if ($op == 'view') {
     if ($delta == 0) {
@@ -98,20 +114,47 @@ function similarterms_list($vid = NULL, $nid = NULL) {
       $count = variable_get('simterms_count_0', 5);
     }
     if (!empty($terms)) {
+      $delta = $vid?$vid:0;
+      $count = variable_get('simterms_count_'. $delta, 5);
       //past events
       $pasts = array();
-      $result = db_query(
-      'SELECT n.nid, n.title, COUNT(n.nid) AS ncount
-        FROM {node} n
-        INNER JOIN {term_node} tn ON n.nid = tn.nid
-        WHERE tn.tid IN (%s)
-          AND n.nid != %d
-          AND n.status = 1
-          AND n.moderate = 0
-        GROUP BY n.nid, n.title, n.created
-        ORDER BY ncount DESC, n.created DESC
-        LIMIT %d'
-        , $terms, $nid, $count);
+
+      // mimo addition to load select only nodes of the same content type
+      $types = variable_get('simterms_sametype_'.$delta, false);
+      if(($types !== false) && is_array($types)) {
+      	if($types[1]) {
+      	  $nodeObj = node_load($nid);
+      	  $types[1] = $nodeObj->type;
+      	}
+	$strTypes = "'" . implode("','",$types) . "'"; // couldnt find a solutin for IN %s problem and \' substi
+        $result = db_query(
+	  'SELECT n.nid, n.title, COUNT(n.nid) AS ncount
+	    FROM {node} n
+	    INNER JOIN {term_node} tn ON n.nid = tn.nid
+	    WHERE tn.tid IN (%s)
+	    AND n.type IN ('.$strTypes.')
+	    AND n.nid != %d
+	    AND n.status = 1
+	    AND n.moderate = 0
+	    GROUP BY n.nid, n.title, n.created
+	    ORDER BY ncount DESC, n.created DESC
+	    LIMIT %d',
+        $terms, $nid, $count);
+      } else {
+        $result = db_query(
+	  'SELECT n.nid, n.title, COUNT(n.nid) AS ncount
+	    ROM {node} n
+	    INNER JOIN {term_node} tn ON n.nid = tn.nid
+	    WHERE tn.tid IN (%s)
+	    AND n.nid != %d
+	    AND n.status = 1
+	    AND n.moderate = 0
+	    GROUP BY n.nid, n.title, n.created
+	    ORDER BY ncount DESC, n.created DESC
+	    LIMIT %d',
+	$terms, $nid, $count);
+      }
+
       while ($r = db_fetch_object($result)) {
         $nodes[] = node_load($r->nid);
       }
