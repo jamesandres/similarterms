@@ -9,11 +9,12 @@
  */
 
 /**
-* Display help and module information
-* @param path which path of the site we're displaying help
-* @param arg array that holds the current path as would be returned from arg() function
-* @return help text for the path
-*/
+ * Display help and module information
+ * @param path which path of the site we're displaying help
+ * @param arg array that holds the current path as would be returned from arg() function
+ * @return help text for the path
+ */
+
 function similarterms_help($path, $arg) {
   $output = '';
   switch ($path) {
@@ -56,9 +57,9 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
       '#description' => t('The maximum number of similar items to display'),
     );
     //mimo addition to configuration to limit to same page type
-    $types = array('0'=>'<none>','1'=>t('same as current'));
-    $arrTypesObj = node_get_types();
-    foreach($arrTypesObj as $type=>$obj) {
+    $types = array('0' => '<none>', '1' => t('same as current'));
+    $arr_types_obj = node_get_types();
+    foreach ($arr_types_obj as $type => $obj) {
       $types[$type] = $obj->name;
     }
     $form['sametype'] = array(
@@ -69,10 +70,10 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
       '#description' => t('Limit to pages of this or these content type(s)'),
       '#multiple' => TRUE
     );
-    return $form; 
+    return $form;
   }
   else if ($op == 'save') {
-    variable_set('simterms_count_'. $delta, $edit['count']); 
+    variable_set('simterms_count_'. $delta, $edit['count']);
     variable_set('simterms_sametype_'. $delta, $edit['sametype']);
   }
   else if ($op == 'view') {
@@ -91,72 +92,66 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
 /**
  * Output the block
  *
- * @param $vid
+ * @param $delta
  *   integer - vocabulary id, leave out to use ALL terms for this node
- * @param $nid
- *   integer - node id, leave out to use current page
  * @return
  *   an array of partial node objects (containing just the parts from the node table)
  */
-function similarterms_list($vid = NULL, $nid = NULL) {
+function similarterms_list($delta = 0) {
+  $nid = NULL;
+  $nodes = array();
+
   if (is_null($nid) && (arg(0) == 'node' && is_numeric(arg(1)))) {
     $nid = arg(1);
   }
-  $nodes = array();
-  if (!is_null($nid)) {
-    if (!is_null($vid)) {
-      $terms = implode(',', array_keys(taxonomy_node_get_terms_by_vocabulary(node_load($nid), $vid)));
-      $count = variable_get('simterms_count_'. $vid, 5);
+  if ($delta == 0) { 
+    $terms = implode(',', array_keys(taxonomy_node_get_terms(node_load($nid))));
+  }
+  else {
+    $terms = implode(',', array_keys(taxonomy_node_get_terms_by_vocabulary(node_load($nid), $delta)));
+  }
+  $count = variable_get('simterms_count_'. $delta, 5);
+
+  if (!empty($terms)) {
+    //past events
+    $pasts = array();
+    $types = variable_get('simterms_sametype_'. $delta, false);
+    if (($types !== false) && is_array($types) && ($types['0'] == NULL) ) {
+      if ($types[1]) {
+        $node_obj = node_load($nid);
+        $types[1] = $node_obj->type;
+      }
+      $str_types = "'". implode("','", $types) ."'"; // couldnt find a solutin for IN %s problem and \' substi
+      $result = db_query(
+        'SELECT n.nid, n.title, COUNT(n.nid) AS ncount '.
+          'FROM {node} n '.
+          'INNER JOIN {term_node} tn ON n.nid = tn.nid '.
+          'WHERE tn.tid IN (%s) '.
+          'AND n.type IN ('. $str_types .') '.
+          'AND n.nid != %d '.
+          'AND n.status = 1 '.
+          'AND n.moderate = 0 '.
+          'GROUP BY n.nid, n.title, n.created '.
+          'ORDER BY ncount DESC, n.created DESC '.
+          'LIMIT %d',
+        $terms, $nid, $count);
     }
     else {
-      $terms = implode(',', array_keys(taxonomy_node_get_terms(node_load($nid))));
-      $count = variable_get('simterms_count_0', 5);
-    }
-    if (!empty($terms)) {
-      $delta = $vid?$vid:0;
-      $count = variable_get('simterms_count_'. $delta, 5);
-      //past events
-      $pasts = array();
-
-      // mimo addition to load select only nodes of the same content type
-      $types = variable_get('simterms_sametype_'.$delta, false);
-      if(($types !== false) && is_array($types)) {
-      	if($types[1]) {
-      	  $nodeObj = node_load($nid);
-      	  $types[1] = $nodeObj->type;
-      	}
-	$strTypes = "'" . implode("','",$types) . "'"; // couldnt find a solutin for IN %s problem and \' substi
-        $result = db_query(
-	  'SELECT n.nid, n.title, COUNT(n.nid) AS ncount
-	    FROM {node} n
-	    INNER JOIN {term_node} tn ON n.nid = tn.nid
-	    WHERE tn.tid IN (%s)
-	    AND n.type IN ('.$strTypes.')
-	    AND n.nid != %d
-	    AND n.status = 1
-	    AND n.moderate = 0
-	    GROUP BY n.nid, n.title, n.created
-	    ORDER BY ncount DESC, n.created DESC
-	    LIMIT %d',
+      $result = db_query(
+        'SELECT n.nid, n.title, COUNT(n.nid) AS ncount '.
+          'FROM {node} n '.
+          'INNER JOIN {term_node} tn ON n.nid = tn.nid '.
+          'WHERE tn.tid IN (%s) '.
+          'AND n.nid != %d '.
+          'AND n.status = 1 '.
+          'AND n.moderate = 0 '.
+          'GROUP BY n.nid, n.title, n.created '.
+          'ORDER BY ncount DESC, n.created DESC '.
+          'LIMIT %d',
         $terms, $nid, $count);
-      } else {
-        $result = db_query(
-	  'SELECT n.nid, n.title, COUNT(n.nid) AS ncount
-	    ROM {node} n
-	    INNER JOIN {term_node} tn ON n.nid = tn.nid
-	    WHERE tn.tid IN (%s)
-	    AND n.nid != %d
-	    AND n.status = 1
-	    AND n.moderate = 0
-	    GROUP BY n.nid, n.title, n.created
-	    ORDER BY ncount DESC, n.created DESC
-	    LIMIT %d',
-	$terms, $nid, $count);
-      }
-
-      while ($r = db_fetch_object($result)) {
-        $nodes[] = node_load($r->nid);
-      }
+    }
+    while ($r = db_fetch_object($result)) {
+      $nodes[] = node_load($r->nid);
     }
   }
   return $nodes;
@@ -171,6 +166,6 @@ function similarterms_theme() {
     'similarterms' => array(
       'template'  => 'similarterms',
       'arguments' => array('items' => NULL),
-       ),
+    ),
   );
 }

@@ -2,8 +2,8 @@
 // $Id$
 
 /**
- * @file simterms.tpl.php
- *
+ * @file
+ * simterms.tpl.ph
  * Theme implementation to display a list of related content.
  *
  * Available variables:
@@ -18,4 +18,4 @@ if ($items) {
        </ul>
 <?php
 }
-?>
+
