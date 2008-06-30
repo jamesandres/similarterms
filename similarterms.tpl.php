@@ -10,12 +10,12 @@
  * - $items: the list.
  */
 if ($items) {
+$items_ls = array();
 ?>
-       <ul>
        <?php foreach ($items as $node) { ?>
-               <li><?php print l($node->title, 'node/'. $node->nid) ?></li>
+               <?php $items_ls[] = l($node->title, 'node/'. $node->nid);  ?>
        <?php } ?>
-       </ul>
+       <?php print theme('item_list', $items_ls); ?>
 <?php
 }
 
