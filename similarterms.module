@@ -106,7 +106,7 @@ function similarterms_list($vocid = 0, $nid = NULL) {
     $nid = arg(1);
   }
   if ($nid != NULL) {
-    if ($vocid == 0) { 
+    if ($vocid == 0) {
       $terms = implode(',', array_keys(taxonomy_node_get_terms(node_load($nid))));
     }
     else {
@@ -123,7 +123,7 @@ function similarterms_list($vocid = 0, $nid = NULL) {
           $types[1] = $node_obj->type;
         }
         $str_types = "'". implode("','", $types) ."'"; // couldnt find a solutin for IN %s problem and \' substi
-        $result = db_query(
+        $sql = sprintf(
           'SELECT n.nid, n.title, COUNT(n.nid) AS ncount '.
             'FROM {node} n '.
             'INNER JOIN {term_node} tn ON n.nid = tn.nid '.
@@ -138,7 +138,7 @@ function similarterms_list($vocid = 0, $nid = NULL) {
           $terms, $nid, $count);
       }
       else {
-        $result = db_query(
+        $sql = sprintf(
           'SELECT n.nid, n.title, COUNT(n.nid) AS ncount '.
             'FROM {node} n '.
             'INNER JOIN {term_node} tn ON n.nid = tn.nid '.
@@ -151,6 +151,8 @@ function similarterms_list($vocid = 0, $nid = NULL) {
             'LIMIT %d',
           $terms, $nid, $count);
       }
+      $sql = db_rewrite_sql($sql);
+      $result = db_query($sql);
       while ($r = db_fetch_object($result)) {
         $nodes[] = node_load($r->nid);
       }
