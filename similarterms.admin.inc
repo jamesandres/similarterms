@@ -1,5 +1,5 @@
 <?php
-// $Id:
+// $Id$
 
 /**
  * @file
@@ -16,7 +16,15 @@ function similarterms_admin_settings(&$form_state) {
     '#default_value' => variable_get("similarterms_tags_only", 0),
     '#options' => array('yes', 'no'),
     '#required' => FALSE,
-    '#weight' => -13,
+//    '#weight' => 0,
+  );
+  $form['similarterms_teaser'] = array(
+    '#type' => 'radios',
+    '#title' => t('Display teaser as well as titles'),
+    '#default_value' => variable_get("similarterms_teaser", 1),
+    '#options' => array('yes', 'no'),
+    '#required' => FALSE,
+//    '#weight' => 1,
   );
 
   // Get the weblinks categories to add to the blogroll
