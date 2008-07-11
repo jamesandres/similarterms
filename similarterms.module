@@ -80,11 +80,11 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
     $block['cache'] = BLOCK_CACHE_PER_PAGE;
     if ($delta == 0) {
       $block['subject'] = t('Similar');
-      $block['content'] = theme('similarterms', variable_get("similarterms_teaser", 1), similarterms_list());
+      $block['content'] = theme('similarterms', variable_get("similarterms_teaser", 0), similarterms_list());
     }
     else {
       $block['subject'] = t('Similar');
-      $block['content'] = theme('similarterms', variable_get("similarterms_teaser", 1), similarterms_list($delta));
+      $block['content'] = theme('similarterms', variable_get("similarterms_teaser", 0), similarterms_list($delta));
     }
     return $block;
   }

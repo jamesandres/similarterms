@@ -20,8 +20,8 @@ function similarterms_admin_settings(&$form_state) {
   );
   $form['similarterms_teaser'] = array(
     '#type' => 'radios',
-    '#title' => t('Display teaser as well as titles'),
-    '#default_value' => variable_get("similarterms_teaser", 1),
+    '#title' => t('Display titles only excluding teasers'),
+    '#default_value' => variable_get("similarterms_teaser", 0),
     '#options' => array('yes', 'no'),
     '#required' => FALSE,
 //    '#weight' => 1,

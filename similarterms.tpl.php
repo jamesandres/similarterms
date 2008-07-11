@@ -14,17 +14,15 @@ if ($items) {
 $items_ls = array();
   if (!$teaser) {
     foreach ($items as $node) {
-      print l($node->title, 'node/'. $node->nid);
+      print '<li>'. l($node->title, 'node/'. $node->nid);
       print ' - '. $node->teaser;
+      print "</li>\n";
     }
   }
   else {
-?>
-     <?php foreach ($items as $node) { ?>
-               <?php $items_ls[] = l($node->title, 'node/'. $node->nid);  ?>
-       <?php } ?>
-       <?php print theme('item_list', $items_ls); ?>
-<?php
+    foreach ($items as $node) {
+      $items_ls[] = l($node->title, 'node/'. $node->nid);
+    }
+    print theme('item_list', $items_ls);
   }
 }
-
