@@ -10,21 +10,29 @@
  * Module settings page.
  */
 function similarterms_admin_settings(&$form_state) {
+  $vocabularies_options = array(
+    'multi_select_and_tags' => 'Display multi-select and tags types only',
+    'all' => 'Display all vocabularies types',
+    );
   $form['similarterms_tags_only'] = array(
     '#type' => 'radios',
-    '#title' => t('Only multi-select and free tagging vocabularies'),
-    '#default_value' => variable_get("similarterms_tags_only", 0),
-    '#options' => array('yes', 'no'),
+    '#title' => t('Vocabularies types to list'),
+    '#default_value' => variable_get("similarterms_vocabularies", 'multi_select_and_tags'),
+    '#options' => $vocabularies_options,
     '#required' => FALSE,
-//    '#weight' => 0,
   );
-  $form['similarterms_teaser'] = array(
+  $display_options = array(
+    'title_only' => 'Display titles only',
+    'teaser' => 'Display titles and teaser',
+    );
+  $form['similarterms_display_options'] = array(
     '#type' => 'radios',
-    '#title' => t('Display titles only excluding teasers'),
-    '#default_value' => variable_get("similarterms_teaser", 0),
-    '#options' => array('yes', 'no'),
+    '#title' => t('Display Options'),
+    '#default_value' => variable_get('similarterms_display_options', 'title_only'),
+    '#options' => $display_options,
     '#required' => FALSE,
-//    '#weight' => 1,
+    '#prefix' => '<div>',
+    '#suffix' => '</div>',
   );
 
   // Get the weblinks categories to add to the blogroll

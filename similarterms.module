@@ -40,10 +40,17 @@ function similarterms_perm() {
 function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
   if ($op == 'list') {
     $blocks[]['info'] = t('Similar entries from ANY vocabulary.');
-    foreach (taxonomy_get_vocabularies() as $v) {
-      // this only makes sense for multi-select vocabularies and free tagging
-      if (variable_get('similarterms_tags_only', 0) || ($v->multiple || $v->tags)) {
+    if (variable_get("similarterms_vocabularies", 'multi_select_and_tags') == 'all') {
+      foreach (taxonomy_get_vocabularies() as $v) {
         $blocks[$v->vid]['info'] = t('Similar entries from the @vocab vocabulary.', array('@vocab' => $v->name));
+      }
+    }
+    else {
+      foreach (taxonomy_get_vocabularies() as $v) {
+        // this only makes sense for multi-select vocabularies and free tagging
+        if ($v->multiple || $v->tags) {
+          $blocks[$v->vid]['info'] = t('Similar entries from the @vocab vocabulary.', array('@vocab' => $v->name));
+        }
       }
     }
     return $blocks;
@@ -80,11 +87,11 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
     $block['cache'] = BLOCK_CACHE_PER_PAGE;
     if ($delta == 0) {
       $block['subject'] = t('Similar');
-      $block['content'] = theme('similarterms', variable_get("similarterms_teaser", 0), similarterms_list());
+      $block['content'] = theme('similarterms', variable_get('similarterms_display_options', 'title_only'), similarterms_list());
     }
     else {
       $block['subject'] = t('Similar');
-      $block['content'] = theme('similarterms', variable_get("similarterms_teaser", 0), similarterms_list($delta));
+      $block['content'] = theme('similarterms', variable_get('similarterms_display_options', 'title_only'), similarterms_list($delta));
     }
     return $block;
   }
@@ -187,7 +194,7 @@ function similarterms_theme() {
   return array(
     'similarterms' => array(
       'template'  => 'similarterms',
-      'arguments' => array('teaser' => NULL, 'items' => NULL),
+      'arguments' => array('display_options' => NULL, 'items' => NULL),
     ),
   );
 }
