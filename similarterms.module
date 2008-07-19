@@ -77,11 +77,26 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
       '#description' => t('Limit to pages of this or these content type(s)'),
       '#multiple' => TRUE
     );
+    if ($delta > 0) {
+      $tree = taxonomy_get_tree($delta);
+      foreach ($tree as $term) {
+        $terms[$term->tid] = $term->name;
+      }
+      $form['ignoreterms'] = array(
+        '#type' => 'select',
+        '#title' => t('Terms to be ignored'),
+        '#default_value' => variable_get('simterms_ignoreterms_'. $delta, array()),
+        '#options' => $terms,
+        '#description' => t('Ignore selected terms here from being used to search for similar entries'),
+        '#multiple' => TRUE
+      );
+    }
     return $form;
   }
   else if ($op == 'save') {
     variable_set('simterms_count_'. $delta, $edit['count']);
     variable_set('simterms_sametype_'. $delta, $edit['sametype']);
+    variable_set('simterms_ignoreterms_'. $delta, $edit['ignoreterms']);
   }
   else if ($op == 'view') {
     $block['cache'] = BLOCK_CACHE_PER_PAGE;
@@ -110,16 +125,27 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
 function similarterms_list($vocid = 0, $nid = NULL) {
   $nodes = array();
 
-  if (is_null($nid) && (arg(0) == 'node' && is_numeric(arg(1)))) {
+  if (arg(0) == 'node' && is_numeric(arg(1))) {
     $nid = arg(1);
   }
   if ($nid != NULL) {
     if ($vocid == 0) {
-      $terms = implode(',', array_keys(taxonomy_node_get_terms(node_load($nid))));
+//      $terms = implode(',', array_keys(taxonomy_node_get_terms(node_load($nid))));
+      $terms = array_keys(taxonomy_node_get_terms(node_load($nid)));
     }
     else {
-      $terms = implode(',', array_keys(taxonomy_node_get_terms_by_vocabulary(node_load($nid), $vocid)));
+//     $terms = implode(',', array_keys(taxonomy_node_get_terms_by_vocabulary(node_load($nid), $vocid)));
+       $terms = array_keys(taxonomy_node_get_terms_by_vocabulary(node_load($nid), $vocid));
     }
+    // Filter out some terms
+    $terms_filter = variable_get('simterms_ignoreterms_'. $vocid, array());
+    for ($i = 0; $i < count($terms_filter); $i++) {
+      $idx = array_search($terms_filter[$i], $terms);
+      if ($idx >= 0) {
+        unset($terms[$idx]);
+      }
+    }
+    $terms = implode(',', $terms);
     $count = variable_get('simterms_count_'. $vocid, 5);
     if (!empty($terms)) {
       //past events
