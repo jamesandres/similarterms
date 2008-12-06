@@ -27,7 +27,7 @@ function similarterms_help($path, $arg) {
 
 /**
  * Valid permissions for this module
- * @return array An array of valid permissions for the onthisdate module
+ * @return array An array of valid permissions for the similarterms module
  */
 function similarterms_perm() {
   return array('access similarterms content', 'administer similarterms content');
@@ -39,10 +39,12 @@ function similarterms_perm() {
  */
 function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
   if ($op == 'list') {
-    $blocks[]['info'] = t('Similar entries from ANY vocabulary.');
+    $blocks[0]['info'] = t('Similar entries from ANY vocabulary.');
+    $blocks[0]['cache'] = BLOCK_CACHE_PER_PAGE;
     if (variable_get("similarterms_vocabularies", 'multi_select_and_tags') == 'all') {
       foreach (taxonomy_get_vocabularies() as $v) {
         $blocks[$v->vid]['info'] = t('Similar entries from the @vocab vocabulary.', array('@vocab' => $v->name));
+        $blocks[$v->vid]['cache'] = BLOCK_CACHE_PER_PAGE;
       }
     }
     else {
@@ -50,6 +52,7 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
         // this only makes sense for multi-select vocabularies and free tagging
         if ($v->multiple || $v->tags) {
           $blocks[$v->vid]['info'] = t('Similar entries from the @vocab vocabulary.', array('@vocab' => $v->name));
+          $blocks[$v->vid]['cache'] = BLOCK_CACHE_PER_PAGE;
         }
       }
     }
@@ -100,7 +103,6 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
     variable_set('simterms_ignoreterms_'. $delta, $edit['ignoreterms']);
   }
   else if ($op == 'view') {
-    $block['cache'] = BLOCK_CACHE_PER_PAGE;
     if ($delta == 0) {
       $block['subject'] = t('Similar');
       $block['content'] = theme('similarterms', variable_get('similarterms_display_options', 'title_only'), similarterms_list());
