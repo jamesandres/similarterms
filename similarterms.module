@@ -78,6 +78,7 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
       '#multiple' => TRUE
     );
     if ($delta > 0) {
+      $terms = array();
       $tree = taxonomy_get_tree($delta);
       foreach ($tree as $term) {
         $terms[$term->tid] = $term->name;
@@ -151,7 +152,7 @@ function similarterms_list($vocid = 0, $nid = NULL) {
       //past events
       $pasts = array();
       $types = variable_get('simterms_sametype_'. $vocid, false);
-      if (($types !== false) && is_array($types) && ($types['0'] == NULL) ) {
+      if (($types !== false) && is_array($types) && count($types) > 0 && ($types['0'] == NULL) ) {
         if ($types[1]) {
           $node_obj = node_load($nid);
           $types[1] = $node_obj->type;
