@@ -140,8 +140,8 @@ function similarterms_list($vocid = 0, $nid = NULL) {
     }
     // Filter out some terms
     $terms_filter = variable_get('simterms_ignoreterms_'. $vocid, array());
-    for ($i = 0; $i < count($terms_filter); $i++) {
-      $idx = array_search($terms_filter[$i], $terms);
+    foreach ($terms_filter as $v) {
+      $idx = array_search($v, $terms);
       if ($idx >= 0) {
         unset($terms[$idx]);
       }
