@@ -66,6 +66,13 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
       '#size' => 3,
       '#description' => t('The maximum number of similar items to display'),
     );
+    //petertj addition to configuration to permit display of current node in list
+    $form['showcurrentnode'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Show current node as active in the list'),
+      '#default_value' => variable_get('simterms_showcurrentnode_'. $delta, FALSE),
+      '#required' => FALSE,
+    );
     //mimo addition to configuration to limit to same page type
     $types = array('0' => '<none>', '1' => t('same as current'));
     $arr_types_obj = node_get_types();
@@ -133,12 +140,10 @@ function similarterms_list($vocid = 0, $nid = NULL) {
   }
   if ($nid != NULL) {
     if ($vocid == 0) {
-//      $terms = implode(',', array_keys(taxonomy_node_get_terms(node_load($nid))));
       $terms = array_keys(taxonomy_node_get_terms(node_load($nid)));
     }
     else {
-//     $terms = implode(',', array_keys(taxonomy_node_get_terms_by_vocabulary(node_load($nid), $vocid)));
-       $terms = array_keys(taxonomy_node_get_terms_by_vocabulary(node_load($nid), $vocid));
+      $terms = array_keys(taxonomy_node_get_terms_by_vocabulary(node_load($nid), $vocid));
     }
     // Filter out some terms
     $terms_filter = variable_get('simterms_ignoreterms_'. $vocid, array());
@@ -153,6 +158,8 @@ function similarterms_list($vocid = 0, $nid = NULL) {
     if (!empty($terms)) {
       //past events
       $pasts = array();
+      //if showcurrentnode option is false (default state), create filter for query generator
+      $filtercurrentnode = variable_get('simterms_showcurrentnode_'. $vocid, FALSE)?'':'AND n.nid != %d ';
       $types = variable_get('simterms_sametype_'. $vocid, false);
       if (($types !== false) && is_array($types) && count($types) > 0 && ($types['0'] == NULL) ) {
         if ($types[1]) {
@@ -166,7 +173,7 @@ function similarterms_list($vocid = 0, $nid = NULL) {
             'INNER JOIN {term_node} tn ON n.nid = tn.nid '.
             'WHERE tn.tid IN (%s) '.
             'AND n.type IN ('. $str_types .') '.
-            'AND n.nid != %d '.
+            $filtercurrentnode .
             'AND n.status = 1 '.
             'AND n.moderate = 0 '.
             'GROUP BY n.nid, n.title, n.created '.
@@ -180,7 +187,7 @@ function similarterms_list($vocid = 0, $nid = NULL) {
             'FROM {node} n '.
             'INNER JOIN {term_node} tn ON n.nid = tn.nid '.
             'WHERE tn.tid IN (%s) '.
-            'AND n.nid != %d '.
+            $filtercurrentnode .
             'AND n.status = 1 '.
             'AND n.moderate = 0 '.
             'GROUP BY n.nid, n.title, n.created '.
