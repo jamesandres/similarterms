@@ -14,7 +14,7 @@ function similarterms_admin_settings(&$form_state) {
     'multi_select_and_tags' => 'Display multi-select and tags types only',
     'all' => 'Display all vocabularies types',
     );
-  $form['similarterms_tags_only'] = array(
+  $form['similarterms_vocabularies'] = array(
     '#type' => 'radios',
     '#title' => t('Vocabularies types to list'),
     '#default_value' => variable_get("similarterms_vocabularies", 'multi_select_and_tags'),
