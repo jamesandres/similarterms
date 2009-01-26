@@ -202,7 +202,6 @@ function similarterms_update_6102() {
   $ret = array();
   db_create_table($ret, 'cache_similarterms', $schema['cache_similarterms']);
   db_create_table($ret, 'similarterms_override', $schema['similarterms_override']);
-  drupal_flush_all_caches();
   return $ret;
 }
 
@@ -211,6 +210,6 @@ function similarterms_update_6102() {
  */
 function similarterms_update_6101() {
   $ret = array();
-  drupal_flush_all_caches();
+  cache_clear_all(*, 'cache_block', TRUE)
   return $ret;
 }

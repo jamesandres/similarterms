@@ -74,7 +74,7 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
       '#required' => FALSE,
     );
     //mimo addition to configuration to limit to same page type
-    $types = array('0' => '<none>', '1' => t('same as current'));
+    $types = array('0' => t('<none>'), '1' => t('same as current'));
     $arr_types_obj = node_get_types();
     foreach ($arr_types_obj as $type => $obj) {
       $types[$type] = $obj->name;
