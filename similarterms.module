@@ -70,7 +70,7 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
     $form['showcurrentnode'] = array(
       '#type' => 'checkbox',
       '#title' => t('Show current node as active in the list'),
-      '#default_value' => variable_get('simterms_showcurrentnode_'. $delta, FALSE),
+      '#default_value' => variable_get('similarterms_showcurrentnode_'. $delta, FALSE),
       '#required' => FALSE,
     );
     //mimo addition to configuration to limit to same page type
@@ -82,7 +82,7 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
     $form['sametype'] = array(
       '#type' => 'select',
       '#title' => t('Content type limit'),
-      '#default_value' => variable_get('simterms_sametype_'. $delta, false),
+      '#default_value' => variable_get('simterms_sametype_'. $delta, FALSE),
       '#options' => $types,
       '#description' => t('Limit to pages of this or these content type(s)'),
       '#multiple' => TRUE
@@ -108,6 +108,7 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
     variable_set('simterms_count_'. $delta, $edit['count']);
     variable_set('simterms_sametype_'. $delta, $edit['sametype']);
     variable_set('simterms_ignoreterms_'. $delta, $edit['ignoreterms']);
+    variable_set('similarterms_showcurrentnode_'. $delta, $edit['showcurrentnode']);
   }
   else if ($op == 'view') {
     if ($delta == 0) {
@@ -134,75 +135,124 @@ function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
  */
 function similarterms_list($vocid = 0, $nid = NULL) {
   $nodes = array();
+  $sql = "";
+  $args = array();
+  $cache_lifetime = variable_get('similarterms_cache_options', 3600);
 
   if (arg(0) == 'node' && is_numeric(arg(1))) {
     $nid = arg(1);
   }
+
   if ($nid != NULL) {
+    if ($cache_lifetime) {
+      if ($cached = cache_get($nid, 'cache_similarterms')) {
+        return $cached->data;
+      }
+    }
+    $node_obj = node_load($nid);
+
     if ($vocid == 0) {
-      $terms = array_keys(taxonomy_node_get_terms(node_load($nid)));
+      $terms = array_keys(taxonomy_node_get_terms($node_obj));
     }
     else {
-      $terms = array_keys(taxonomy_node_get_terms_by_vocabulary(node_load($nid), $vocid));
+      $terms = array_keys(taxonomy_node_get_terms_by_vocabulary($node_obj, $vocid));
     }
+
     // Filter out some terms
     $terms_filter = variable_get('simterms_ignoreterms_'. $vocid, array());
+
     foreach ($terms_filter as $v) {
       $idx = array_search($v, $terms);
       if ($idx >= 0) {
         unset($terms[$idx]);
       }
     }
-    $terms = implode(',', $terms);
+
     $count = variable_get('simterms_count_'. $vocid, 5);
+
     if (!empty($terms)) {
       //past events
       $pasts = array();
-      //if showcurrentnode option is false (default state), create filter for query generator
-      $filtercurrentnode = variable_get('simterms_showcurrentnode_'. $vocid, FALSE)?'':'AND n.nid != %d ';
-      $types = variable_get('simterms_sametype_'. $vocid, false);
-      if (($types !== false) && is_array($types) && count($types) > 0 && ($types['0'] == NULL) ) {
+
+      $sql = 'SELECT n.nid, n.title, COUNT(n.nid) AS ncount ';
+      $sql .= 'FROM {node} n ';
+      $sql .= 'INNER JOIN {term_node} tn ON n.nid = tn.nid ';
+
+      $sql .= 'WHERE tn.tid IN (';
+      $number_of_terms = count($terms);
+      foreach ($terms as $terms_items) {
+        $number_of_terms--;
+        if ($number_of_terms) {
+          $sql .= "'%s',";
+        }
+        else {
+          $sql .= "'%s'";
+        }
+        $args[] = $terms_items;
+      }
+      $sql .= ') ';
+
+      $types = variable_get('simterms_sametype_'. $vocid, FALSE);
+      if (($types !== FALSE) && is_array($types) && count($types) > 0 && ($types['0'] == NULL) ) {
         if ($types[1]) {
           $node_obj = node_load($nid);
           $types[1] = $node_obj->type;
         }
-        $str_types = "'". implode("','", $types) ."'"; // couldnt find a solutin for IN %s problem and \' substi
-        $sql = sprintf(
-          'SELECT n.nid, n.title, COUNT(n.nid) AS ncount '.
-            'FROM {node} n '.
-            'INNER JOIN {term_node} tn ON n.nid = tn.nid '.
-            'WHERE tn.tid IN (%s) '.
-            'AND n.type IN ('. $str_types .') '.
-            $filtercurrentnode .
-            'AND n.status = 1 '.
-            'AND n.moderate = 0 '.
-            'GROUP BY n.nid, n.title, n.created '.
-            'ORDER BY ncount DESC, n.created DESC '.
-            'LIMIT %d',
-          $terms, $nid, $count);
+        $sql .= 'AND n.type IN (';
+        $number_of_types = count($types);
+        foreach ($types as $types_items) {
+          $number_of_types--;
+          if ($number_of_types) {
+            $sql .= "'%s',";
+          }
+          else {
+            $sql .= "'%s'";
+          }
+          $args[] = $types_items;
+        }
+        $sql .= ') ';
+      }
+
+      //if showcurrentnode option is false (default state), create filter for query.
+      if (!variable_get('similarterms_showcurrentnode_'. $vocid, FALSE)) {
+        $sql .= 'AND n.nid != %d ';
+        $args[] = $nid;
+      }
+
+      $sql .= 'AND n.status = 1 ';
+      $sql .= 'AND n.moderate = 0 ';
+      $sql .= "AND (n.language = '' OR n.language = '%s') ";
+      $args[] = $node_obj->language;
+      $sql .= 'GROUP BY n.nid, n.title, n.created ';
+      if (variable_get('similarterms_ncount_options', 'default') == 'default') {
+        $sql .= 'ORDER BY ncount DESC, ';
       }
       else {
-        $sql = sprintf(
-          'SELECT n.nid, n.title, COUNT(n.nid) AS ncount '.
-            'FROM {node} n '.
-            'INNER JOIN {term_node} tn ON n.nid = tn.nid '.
-            'WHERE tn.tid IN (%s) '.
-            $filtercurrentnode .
-            'AND n.status = 1 '.
-            'AND n.moderate = 0 '.
-            'GROUP BY n.nid, n.title, n.created '.
-            'ORDER BY ncount DESC, n.created DESC '.
-            'LIMIT %d',
-          $terms, $nid, $count);
+        $sql .= 'ORDER BY ncount ASC, ';
       }
+      $sql .= 'n.created DESC ';
+      $sql .= 'LIMIT %d';
+      $args[] = $count;
+
       $sql = db_rewrite_sql($sql);
-      $result = db_query($sql);
+      $result = db_query($sql, $args);
+      watchdog('similarterms',  $sql, NULL, WATCHDOG_INFO);
       while ($r = db_fetch_object($result)) {
         $nodes[] = node_load($r->nid);
+      }
+      if ($cache_lifetime) {
+        cache_set($nid, $nodes, 'cache_similarterms', time() + $cache_lifetime);
       }
     }
   }
   return $nodes;
+}
+
+/**
+ * Implementation of hook_flush_caches().
+ */
+function  similarterms_flush_caches() {
+  return array('cache_similarterms');
 }
 
 /**
@@ -211,7 +261,7 @@ function similarterms_list($vocid = 0, $nid = NULL) {
 function  similarterms_menu() {
   // Admin settings for the site.
   $items['admin/settings/similarterms'] = array(
-    'title' => 'Similar Terms',
+    'title' => 'Similar By Terms',
     'description' => 'Basic Settings for similar term most settings are in the blocks config.',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('similarterms_admin_settings'),
@@ -234,3 +284,4 @@ function similarterms_theme() {
     ),
   );
 }
+
