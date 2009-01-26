@@ -144,8 +144,9 @@ function similarterms_list($vocid = 0, $nid = NULL) {
   }
 
   if ($nid != NULL) {
+    $cid = "$vocid:$nid";
     if ($cache_lifetime) {
-      if ($cached = cache_get($nid, 'cache_similarterms')) {
+      if ($cached = cache_get($cid, 'cache_similarterms')) {
         return $cached->data;
       }
     }
@@ -241,7 +242,7 @@ function similarterms_list($vocid = 0, $nid = NULL) {
         $nodes[] = node_load($r->nid);
       }
       if ($cache_lifetime) {
-        cache_set($nid, $nodes, 'cache_similarterms', time() + $cache_lifetime);
+        cache_set($cid, $nodes, 'cache_similarterms', time() + $cache_lifetime);
       }
     }
   }
