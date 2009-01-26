@@ -237,7 +237,7 @@ function similarterms_list($vocid = 0, $nid = NULL) {
 
       $sql = db_rewrite_sql($sql);
       $result = db_query($sql, $args);
-      watchdog('similarterms',  $sql, NULL, WATCHDOG_INFO);
+//      watchdog('similarterms',  $sql, NULL, WATCHDOG_INFO);
       while ($r = db_fetch_object($result)) {
         $nodes[] = node_load($r->nid);
       }
