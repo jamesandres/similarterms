@@ -210,6 +210,6 @@ function similarterms_update_6102() {
  */
 function similarterms_update_6101() {
   $ret = array();
-  cache_clear_all('*', 'cache_block', TRUE)
+  cache_clear_all('*', 'cache_block', TRUE);
   return $ret;
 }
