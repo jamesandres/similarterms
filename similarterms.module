@@ -139,7 +139,7 @@ function similarterms_list($vocid = 0, $nid = NULL) {
   $args = array();
   $cache_lifetime = variable_get('similarterms_cache_options', 3600);
 
-  if (arg(0) == 'node' && is_numeric(arg(1))) {
+  if (arg(0) == 'node' && is_numeric(arg(1)) && !$nid) {
     $nid = arg(1);
   }
 

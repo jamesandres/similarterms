@@ -211,5 +211,6 @@ function similarterms_update_6102() {
 function similarterms_update_6101() {
   $ret = array();
   cache_clear_all('*', 'cache_block', TRUE);
+  $ret = array( array('success' => TRUE, 'query' => t('Successful Cleared the Block Cache.') );
   return $ret;
 }
