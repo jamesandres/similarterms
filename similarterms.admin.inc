@@ -49,6 +49,20 @@ function similarterms_admin_settings(&$form_state) {
     '#suffix' => '</div>',
   );
 
+  $yesno_opts = array(
+    1 => t('yes'),
+    0 => t('no'),
+  );
+  $form['similarterms_override_options'] = array(
+    '#title' => t('Override Options'),
+    '#description' => t('Allow override of similarterms choices.'),
+    '#default_value' => variable_get('similarterms_override_options', 0),
+    '#options' => $yesno_opts,
+    '#required' => FALSE,
+    '#prefix' => '<div>',
+    '#suffix' => '</div>',
+  );
+
   $cache_options = drupal_map_assoc(array(0, 300, 600, 900, 1800, 3600, 7200, 21600, 43200, 86400, 604800, 1209600, 2419200, 4838400, 9676800, 31536000),  'format_interval');
   $cache_options[0] = t('Never');
 
