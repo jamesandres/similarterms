@@ -21,10 +21,14 @@ $items_ls = array();
     print theme('item_list', $items_ls);
   }
   if ($display_options == 'teaser') {
+    $output = '';
     foreach ($items as $node) {
-      print '<li>'. l($node->title, 'node/'. $node->nid);
-      print ' - '. $node->teaser;
-      print "</li>\n";
+      $output .= '<li>'. l($node->title, 'node/'. $node->nid);
+      $output .= ' - '. $node->teaser;
+      $output .= "</li>\n";
+    }
+    if ($output) {
+      echo "<ul>" . $output . "</ul>";
     }
   }
 }
