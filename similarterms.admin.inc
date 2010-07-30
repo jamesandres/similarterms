@@ -41,7 +41,7 @@ function similarterms_admin_settings(&$form_state) {
     );
   $form['similarterms_ncount_options'] = array(
     '#type' => 'radios',
-    '#title' => t('Unique Order Options'),
+    '#title' => t('Unique Order Options (Recommended you clear cache at the same time.)'),
     '#default_value' => variable_get('similarterms_ncount_options', 'default'),
     '#options' => $ncount_options,
     '#required' => FALSE,
