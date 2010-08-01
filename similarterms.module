@@ -19,7 +19,7 @@ function similarterms_help($path, $arg) {
   $output = '';
   switch ($path) {
     case "admin/help#similarterms":
-      $output = '<p>'.  t("Displays a block with similar content based on taxonomy terms.") .'</p>';
+      $output = '<p>' . t("Displays a block with similar content based on taxonomy terms.") . '</p>';
       break;
   }
   return $output;
@@ -29,53 +29,44 @@ function similarterms_help($path, $arg) {
  * Valid permissions for this module
  * @return array An array of valid permissions for the similarterms module
  */
-function similarterms_perm() {
-  return array('access similarterms content', 'administer similarterms content');
+function similarterms_permission() {
+  return array(
+    'access similarterms content' => array(
+      'title' => t('access similarterms content'),
+      'description' => t('Allows role the abilty to see similar by terms content'),
+    ),
+    'administer similarterms content' => array(
+      'title' => t('administer similarterms content'),
+      'description' => t('Allows role the abilty to see administer similar by terms settings'),
+    ),
+  );
 } // function similarterms_perm()
 
 
 /**
- * Implementation of hook_block().
+ * Implements hook_block_info().
  */
-function similarterms_block($op = 'list', $delta = 0, $edit = array()) {
-  $block = $form = array();
-  switch ($op) {
-    case 'list':
-      return similarterms_block_list();
-
-    case 'view':
-      return similarterms_block_view($delta);
-
-    case 'configure':
-      return similarterms_block_configure($delta);
-
-    case 'save':
-      similarterms_block_save($delta, $edit);
-      return;
-  }
-}
-
-/**
- * Perform the "list" op for hook_block().
- *
- * @return
- *   Array of block definition.
- */
-function similarterms_block_list() {
-  $blocks[0]['info'] = t('Similar entries from ANY vocabulary.');
-  $blocks[0]['cache'] = BLOCK_CACHE_PER_PAGE;
+function similarterms_block_info() {
+  $blocks['all'] = array(
+    'info' => t('Similar entries from ANY vocabulary.');
+    'cache' => DRUPAL_CACHE_PER_ROLE | DRUPAL_CACHE_PER_PAGE,
+  );
   if (variable_get("similarterms_vocabularies", 'multi_select_and_tags') == 'all') {
     foreach (taxonomy_get_vocabularies() as $v) {
-      $blocks[$v->vid]['info'] = t('Similar entries from the @vocab vocabulary.', array('@vocab' => $v->name));
-      $blocks[$v->vid]['cache'] = BLOCK_CACHE_PER_PAGE;
+      $blocks[$v->vid] = array(
+        'info' => t('Similar entries from the @vocab vocabulary.', array('@vocab' => $v->name));
+        'cache' => DRUPAL_CACHE_PER_ROLE | DRUPAL_CACHE_PER_PAGE,
+      );
     }
   }
   else {
     foreach (taxonomy_get_vocabularies() as $v) {
       // this only makes sense for multi-select vocabularies and free tagging
       if ($v->multiple || $v->tags) {
-        $blocks[$v->vid]['info'] = t('Similar entries from the @vocab vocabulary.', array('@vocab' => $v->name));
-        $blocks[$v->vid]['cache'] = BLOCK_CACHE_PER_PAGE;
+        $blocks[$v->vid] = array(
+          'info' => t('Similar entries from the @vocab vocabulary.', array('@vocab' => $v->name));
+          'cache' => DRUPAL_CACHE_PER_ROLE | DRUPAL_CACHE_PER_PAGE,
+        );
       }
     }
   }
@@ -83,40 +74,24 @@ function similarterms_block_list() {
 }
 
 /**
- * Perform the "view" op for hook_block().
- *
- * @param $delta
- *   String specifying which block to proocess.
- *
- * @return
- *   Array of block contents and title.
+ * Implements hook_block_view().
  */
-function similarterms_block_view($delta) {
-  if ($delta == 0) {
-    $block['subject'] = t('Similar');
-    $block['content'] = theme('similarterms', variable_get('similarterms_display_options', 'title_only'), similarterms_list());
-  }
-  else {
-    $block['subject'] = t('Similar');
-    $block['content'] = theme('similarterms', variable_get('similarterms_display_options', 'title_only'), similarterms_list($delta));
-  }
+function similarterms_block_view($delta = '') {
+  $block = array(
+    'subject' => t('Similar');,
+    'content' => theme('similarterms', variable_get('similarterms_display_options', 'title_only'), similarterms_list($delta));
+  );
   return $block;
 }
 
 /**
- * Perform the "configure" op for hook_block().
- *
- * @param $delta
- *   String specifying which block to proocess.
- *
- * @return
- *   Settings form array.
+ * Implements hook_block_view().
  */
-function similarterms_block_configure($delta = 0) {
+function similarterms_block_configure($delta = '') {
   $form['count'] = array(
     '#type' => 'textfield',
     '#title' => t('Item count'),
-    '#default_value' => variable_get('simterms_count_'. $delta, 5),
+    '#default_value' => variable_get('simterms_count_' . $delta, 5),
     '#size' => 3,
     '#description' => t('The maximum number of similar items to display'),
   );
@@ -124,24 +99,24 @@ function similarterms_block_configure($delta = 0) {
   $form['showcurrentnode'] = array(
     '#type' => 'checkbox',
     '#title' => t('Show current node as active in the list'),
-    '#default_value' => variable_get('similarterms_showcurrentnode_'. $delta, FALSE),
+    '#default_value' => variable_get('similarterms_showcurrentnode_' . $delta, FALSE),
     '#required' => FALSE,
   );
   //mimo addition to configuration to limit to same page type
   $types = array('0' => t('<none>'), '1' => t('same as current'));
-  $arr_types_obj = node_get_types();
+  $arr_types_obj = node_type_get_types();
   foreach ($arr_types_obj as $type => $obj) {
     $types[$type] = $obj->name;
   }
   $form['sametype'] = array(
     '#type' => 'select',
     '#title' => t('Content type limit'),
-    '#default_value' => variable_get('simterms_sametype_'. $delta, FALSE),
+    '#default_value' => variable_get('simterms_sametype_' . $delta, FALSE),
     '#options' => $types,
     '#description' => t('Limit to pages of this or these content type(s)'),
     '#multiple' => TRUE
   );
-  if ($delta > 0) {
+  if ($delta != 'all') {
     $terms = array();
     $tree = taxonomy_get_tree($delta);
     foreach ($tree as $term) {
@@ -150,7 +125,7 @@ function similarterms_block_configure($delta = 0) {
     $form['ignoreterms'] = array(
       '#type' => 'select',
       '#title' => t('Terms to be ignored'),
-      '#default_value' => variable_get('simterms_ignoreterms_'. $delta, array()),
+      '#default_value' => variable_get('simterms_ignoreterms_' . $delta, array()),
       '#options' => $terms,
       '#description' => t('Ignore selected terms here from being used to search for similar entries'),
       '#multiple' => TRUE
@@ -170,11 +145,11 @@ function similarterms_block_configure($delta = 0) {
  * @return
  *   None. Values are saved as system variables.
  */
-function similarterms_block_save($delta = 0, $edit = array()) {
-  variable_set('simterms_count_'. $delta, $edit['count']);
-  variable_set('simterms_sametype_'. $delta, $edit['sametype']);
-  variable_set('simterms_ignoreterms_'. $delta, $edit['ignoreterms']);
-  variable_set('similarterms_showcurrentnode_'. $delta, $edit['showcurrentnode']);
+function similarterms_block_save($delta = '', $edit = array()) {
+  variable_set('simterms_count_' . $delta, $edit['count']);
+  variable_set('simterms_sametype_' . $delta, $edit['sametype']);
+  variable_set('simterms_ignoreterms_' . $delta, $edit['ignoreterms']);
+  variable_set('similarterms_showcurrentnode_' . $delta, $edit['showcurrentnode']);
 }
 
 /**
@@ -187,14 +162,14 @@ function similarterms_block_save($delta = 0, $edit = array()) {
  * @return
  *   an array of node objects
  */
-function similarterms_list($vocid = 0, $nid = NULL) {
+function similarterms_list($vocid = 'all', $nid = NULL) {
   $lists = array();
   $nodes = array();
   $args = array();
   $list_num = 0;
   $sql = "";
   $cache_lifetime = variable_get('similarterms_cache_options', 3600);
-  $count = variable_get('simterms_count_'. $vocid, 5);
+  $count = variable_get('simterms_count_' . $vocid, 5);
 
   if (arg(0) == 'node' && is_numeric(arg(1)) && !$nid) {
     $nid = arg(1);
@@ -222,7 +197,7 @@ function similarterms_list($vocid = 0, $nid = NULL) {
     }
     $node_obj = node_load($nid);
 
-    if ($vocid == 0) {
+    if ($vocid == 'all') {
       $terms = array_keys(taxonomy_node_get_terms($node_obj));
     }
     else {
@@ -230,7 +205,7 @@ function similarterms_list($vocid = 0, $nid = NULL) {
     }
 
     // Filter out some terms
-    $terms_filter = variable_get('simterms_ignoreterms_'. $vocid, array());
+    $terms_filter = variable_get('simterms_ignoreterms_' . $vocid, array());
 
     foreach ($terms_filter as $v) {
       $idx = array_search($v, $terms);
@@ -243,82 +218,60 @@ function similarterms_list($vocid = 0, $nid = NULL) {
       //past events
       $pasts = array();
 
-      $sql = 'SELECT n.nid, n.title, COUNT(n.nid) AS ncount ';
-      $sql .= 'FROM {node} n ';
-      $sql .= 'INNER JOIN {term_node} tn ON n.vid = tn.vid ';
+      $query = db_select('node', 'n', $options);
+        ->addField('n', 'nid')
+        ->addField('n', 'title')
+        ->addExpression('COUNT(nid)', 'ncount')
+        ->innerJoin('term_node', 'tn', 'n.vid = tn.vid')
+        ->condition('tn.tid', $terms, 'IN');
 
-      $sql .= 'WHERE tn.tid IN (';
-      $number_of_terms = count($terms);
-      foreach ($terms as $terms_items) {
-        $number_of_terms--;
-        if ($number_of_terms) {
-          $sql .= "'%s',";
-        }
-        else {
-          $sql .= "'%s'";
-        }
-        $args[] = $terms_items;
-      }
-      $sql .= ') ';
-
-      $types = variable_get('simterms_sametype_'. $vocid, FALSE);
+      $types = variable_get('simterms_sametype_' . $vocid, FALSE);
       if (($types !== FALSE) && is_array($types) && count($types) > 0 && ($types['0'] == NULL) ) {
         if ($types[1]) {
           $node_obj = node_load($nid);
           $types[1] = $node_obj->type;
         }
-        $sql .= 'AND n.type IN (';
-        $number_of_types = count($types);
-        foreach ($types as $types_items) {
-          $number_of_types--;
-          if ($number_of_types) {
-            $sql .= "'%s',";
-          }
-          else {
-            $sql .= "'%s'";
-          }
-          $args[] = $types_items;
-        }
-        $sql .= ') ';
+        $query->condition('n.type', $types, 'IN');
       }
 
       //if showcurrentnode option is false (default state), create filter for query.
-      if (!variable_get('similarterms_showcurrentnode_'. $vocid, FALSE)) {
-        $sql .= 'AND n.nid != %d ';
-        $args[] = $nid;
+      if (!variable_get('similarterms_showcurrentnode_' . $vocid, FALSE)) {
+        $query->condition('n.nid', $nid, '<>');
       }
 
-      $sql .= 'AND n.status = 1 ';
-      $sql .= 'AND n.moderate = 0 ';
-      $sql .= "AND (n.language = '' OR n.language = '%s') ";
-      $args[] = $node_obj->language;
-      $sql .= 'GROUP BY n.nid, n.title, n.created ';
+      $query
+        ->condition('n.status', 1)
+        ->condition('n.moderate', 0)
+        ->condition('n.language', '')
+        ->condition('n.language', $node_obj->language)
+        ->groupBy('n.nid')
+        ->groupBy('n.title')
+        ->groupBy('n.created');
+
       if (variable_get('similarterms_ncount_options', 'default') == 'default') {
-        $sql .= 'ORDER BY ncount DESC, ';
+        $query->orderBy('ncount', 'DESC');
       }
       else {
-        $sql .= 'ORDER BY ncount ASC, ';
+        $query->orderBy('ncount', 'ASC');
       }
-      $sql .= 'n.created DESC ';
-      $sql .= 'LIMIT %d';
-      $args[] = $count;
+      $query->orderBy('n.created', 'DESC');
+      $query->range(0, $count);
 
-      $sql = db_rewrite_sql($sql);
-      $result = db_query($sql, $args);
-//      watchdog('similarterms',  $sql, NULL, WATCHDOG_INFO);
-      while ($r = db_fetch_object($result)) {
+      $result = $query->execute();
+      foreach ($result as $record) {
+        $r = $record->fetchObject();
         $nodes[] = node_load($r->nid);
       }
 
       // Allow modules to alter the list of nodes by implementing a hook.
       // Design pattern from comment_invoke_comment().
       foreach (module_implements('similarterms') as $name) {
-        $function = $name .'_similarterms';
+        $function = $name . '_similarterms';
         $function($nodes, $node_obj);
       }
 
       if ($cache_lifetime) {
-        cache_set($cid, $nodes, 'cache_similarterms', time() + $cache_lifetime);
+        cache_set($cid, $nodes, 'cache_similarterms', REQUEST_TIME + $cache_lifetime);
       }
     }
   }
@@ -326,17 +279,17 @@ function similarterms_list($vocid = 0, $nid = NULL) {
 }
 
 /**
- * Implementation of hook_flush_caches().
+ * Implements hook_flush_caches().
  */
 function similarterms_flush_caches() {
   return array('cache_similarterms');
 }
 
 /**
- * Implementation of hook_form_alter().
+ * Implements hook_form_alter().
  */
-function similarterms_form_alter(&$form, $form_state, $form_id) {
-  if (isset($form['type']) && $form['type']['#value'] .'_node_form' == $form_id) {
+function similarterms_form_alter(&$form, &$form_state, $form_id) {
+  if (!empty($form['#node_edit_form'])) {
     if (!variable_get('similarterms_override_options', 0)) {
       return;
     }
@@ -366,39 +319,39 @@ function similarterms_form_alter(&$form, $form_state, $form_id) {
       if (! $blocks[$v->vid]) {
         continue;
       }
-      $types = variable_get('simterms_sametype_'. $v->vid, array('0' => '0'));
+      $types = variable_get('simterms_sametype_' . $v->vid, array('0' => '0'));
       if (! $types[$node_type] && ! isset($types[0])) {
         continue;
       }
       $no_similarterms = 0;
-      $form['similarterms']['similarterms_vid_'. $v->vid] = array(
+      $form['similarterms']['similarterms_vid_' . $v->vid] = array(
         '#type' => 'fieldset',
         '#title' => $v->name,
         '#collapsible' => 1,
         '#collapsed' => sizeof($overrides[$v->vid]) ? 0 : 1,
         '#tree' => 1,
       );
-      $form['similarterms']['similarterms_vid_'. $v->vid]['similarterms_paths'] = array(
+      $form['similarterms']['similarterms_vid_' . $v->vid]['similarterms_paths'] = array(
         '#type' => 'fieldset',
         '#title' => t('Paths'),
         '#tree' => 1,
       );
-      $count = variable_get('simterms_count_'. $v->vid, 5);
+      $count = variable_get('simterms_count_' . $v->vid, 5);
       for ($i = 0; $i < $count; $i++) {
         $default_value = '';
         if ($overrides[$v->vid][$i]) {
-          $default_value = drupal_lookup_path('alias', 'node/'. $overrides[$v->vid][$i]);
+          $default_value = drupal_lookup_path('alias', 'node/' . $overrides[$v->vid][$i]);
           if (! $default_value) {
-            $default_value = 'node/'. $overrides[$v->vid][$i];
+            $default_value = 'node/' . $overrides[$v->vid][$i];
           }
         }
-        $form['similarterms']['similarterms_vid_'. $v->vid]['similarterms_paths'][$i] = array(
+        $form['similarterms']['similarterms_vid_' . $v->vid]['similarterms_paths'][$i] = array(
           '#type' => 'textfield',
           '#title' => t('Path %d', array('%d' => $i + 1)),
           '#default_value' => $default_value ? $default_value : '',
         );
       }
-      $form['similarterms']['similarterms_vid_'. $v->vid]['similarterms_override_delete'] = array(
+      $form['similarterms']['similarterms_vid_' . $v->vid]['similarterms_override_delete'] = array(
         '#type' => 'checkbox',
         '#title' => t('Delete Similar Terms Overrides?'),
         '#description' => t('If this option is checked all paths will be deleted for this vocabulary.'),
@@ -409,7 +362,7 @@ function similarterms_form_alter(&$form, $form_state, $form_id) {
       unset($form['similarterms']);
     }
   }
- }
+}
 
 /**
  * This function returns a list of overrides
@@ -430,25 +383,7 @@ function similarterms_get_overrides($nid, $vid = NULL) {
 }
 
  /**
- * Implementation of hook_nodeapi().
- */
-function similarterms_nodeapi($node, $op, $arg = 0) {
-  switch ($op) {
-    case 'delete':
-      similarterms_node_delete($node);
-      break;
-    case 'insert':
-    case 'update':
-      similarterms_node_save($node);
-      break;
-    case 'validate':
-      similarterms_node_validate($node);
-      break;
-  }
-}
-
-/**
- * Function to delete entries from overrides table when a node is deleted
+ * Implements hook_node_delete().
  */
 function similarterms_node_delete($node, $vid = NULL) {
   if (!variable_get('similarterms_override_options', 0)) {
@@ -464,6 +399,20 @@ function similarterms_node_delete($node, $vid = NULL) {
 }
 
 /**
+ * Implements hook_node_update().
+ */
+function similarterms_node_update($node) {
+  similarterms_node_save($node);
+}
+
+/**
+ * Implements hook_node_insert().
+ */
+function similarterms_node_insert($node) {
+  similarterms_node_save($node);
+}
+
+/**
  * Function to populate overrides table
  */
 function similarterms_node_save($node) {
@@ -473,7 +422,7 @@ function similarterms_node_save($node) {
   $result = array();
   $query = "INSERT INTO {similarterms_override} (nid, path, vid) VALUES(%d, %d, %d)";
   foreach (similarterms_taxonomy_get_vocabularies() as $v) {
-    $vid = 'similarterms_vid_'. $v->vid;
+    $vid = 'similarterms_vid_' . $v->vid;
     $alias =& $node->$vid;
     similarterms_node_delete($node, $v->vid);
     if ($alias['similarterms_override_delete']) {
@@ -502,14 +451,14 @@ function similarterms_node_save($node) {
 }
 
 /**
- * Function to validate entries into the overrides table
+ * Implements hook_node_validate().
  */
-function similarterms_node_validate($node) {
+function similarterms_node_validate($node, $form) {
   if (!variable_get('similarterms_override_options', 0)) {
     return;
   }
   foreach (similarterms_taxonomy_get_vocabularies() as $v) {
-    $vid = 'similarterms_vid_'. $v->vid;
+    $vid = 'similarterms_vid_' . $v->vid;
     $alias =& $node->$vid;
     // Make sure that the paths are valid
     foreach ($alias['similarterms_paths'] as $id => $path) {
@@ -562,7 +511,7 @@ function similarterms_taxonomy_get_vocabularies() {
 }
 
 /**
- * Implementation of hook_menu().
+ * Implements hook_menui().
  */
 function  similarterms_menu() {
   // Admin settings for the site.

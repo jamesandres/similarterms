@@ -1,5 +1,8 @@
 ; $Id$
 name = Similar By Terms
-core = 6.x
+core = 7.x
 description = "Display a block of other content that is similar by keywords (taxonomy terms)."
 
+files[] = similarterms.module
+files[] = similarterms.admin.inc
+files[] = similarterms.install
