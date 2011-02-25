@@ -1,4 +1,3 @@
-$Id$
 
 Similar By Terms (similarterms.module)
 by Jeff Robbins
