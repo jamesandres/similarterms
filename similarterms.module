@@ -50,25 +50,12 @@ function similarterms_block_info() {
     'info' => t('Similar entries from ANY vocabulary.'),
     'cache' => DRUPAL_CACHE_PER_ROLE | DRUPAL_CACHE_PER_PAGE,
   );
-  if (variable_get("similarterms_vocabularies", 'multi_select_and_tags') == 'all') {
-    foreach (taxonomy_get_vocabularies() as $v) {
-      $blocks[$v->vid] = array(
-        'info' => t('Similar entries from the @vocab vocabulary.', array('@vocab' => $v->name)),
-        'cache' => DRUPAL_CACHE_PER_ROLE | DRUPAL_CACHE_PER_PAGE
-      );
-    }
-  }
-  else {
-    foreach (taxonomy_get_vocabularies() as $v) {
-      // this only makes sense for multi-select vocabularies and free tagging
-      if (isset($v->multiple) || isset($v->tags)) {
-        $blocks[$v->vid] = array(
-          'info' => t('Similar entries from the @vocab vocabulary.', array('@vocab' => $v->name)),
-          'cache' => DRUPAL_CACHE_PER_ROLE | DRUPAL_CACHE_PER_PAGE
-        );
-      }
-    }
-  }
+  foreach (taxonomy_get_vocabularies() as $v) {
+    $blocks[$v->vid] = array(
+      'info' => t('Similar entries from the @vocab vocabulary.', array('@vocab' => $v->name)),
+      'cache' => DRUPAL_CACHE_PER_ROLE | DRUPAL_CACHE_PER_PAGE
+    );
+ }
   return $blocks;
 }
 
@@ -78,7 +65,10 @@ function similarterms_block_info() {
 function similarterms_block_view($delta = '') {
   $block = array(
     'subject' => t('Similar'),
-    'content' => theme('similarterms', variable_get('similarterms_display_options', 'title_only'), similarterms_list($delta))
+    'content' => theme('similarterms', array(
+      'display_options' => variable_get('similarterms_display_options', 'title_only'),
+      'nodes' => similarterms_list($delta),
+    )),
   );
   return $block;
 }
@@ -117,7 +107,7 @@ function similarterms_block_configure($delta = '') {
   );
   if ($delta != 'all') {
     $terms = array();
-    $tree = taxonomy_get_tree($delta);
+    $tree = ($delta);
     foreach ($tree as $term) {
       $terms[$term->tid] = $term->name;
     }
@@ -201,10 +191,10 @@ function similarterms_list($vocid = 'all', $nid = NULL) {
     $node_obj = node_load($nid);
 
     if ($vocid == 'all') {
-      $terms = array_keys(taxonomy_node_get_terms($node_obj));
+      $terms = array_keys(similarterms_taxonomy_node_get_terms($node_obj));
     }
     else {
-      $terms = array_keys(taxonomy_node_get_terms_by_vocabulary($node_obj, $vocid));
+      $terms = array_keys(similarterms_taxonomy_node_get_terms_by_vocabulary($node_obj, $vocid));
     }
 
     // Filter out some terms
@@ -221,12 +211,11 @@ function similarterms_list($vocid = 'all', $nid = NULL) {
       //past events
       $pasts = array();
 
-      $query = db_select('node', 'n', $options)
-        ->addField('n', 'nid')
-        ->addField('n', 'title')
-        ->addExpression('COUNT(nid)', 'ncount')
-        ->innerJoin('term_node', 'tn', 'n.vid = tn.vid')
-        ->condition('tn.tid', $terms, 'IN');
+      $query = db_select('node', 'n');
+      $query->addField('n', 'nid');
+      $query->addExpression('COUNT(n.nid)', 'ncount');
+      $query->innerJoin('term_node', 'tn', 'n.vid = tn.vid');
+      $query->condition('tn.tid', $terms, 'IN');
 
       $types = variable_get('simterms_sametype_' . $vocid, FALSE);
       if (($types !== FALSE) && is_array($types) && count($types) > 0 && ($types['0'] == NULL) ) {
@@ -244,9 +233,10 @@ function similarterms_list($vocid = 'all', $nid = NULL) {
 
       $query
         ->condition('n.status', 1)
-        ->condition('n.moderate', 0)
-        ->condition('n.language', '')
-        ->condition('n.language', $node_obj->language)
+        ->condition(db_or()
+          ->condition('n.language', 'und')
+          ->condition('n.language', $node_obj->language)
+        )
         ->groupBy('n.nid')
         ->groupBy('n.title')
         ->groupBy('n.created');
@@ -261,10 +251,12 @@ function similarterms_list($vocid = 'all', $nid = NULL) {
       $query->range(0, $count);
 
       $result = $query->execute();
+      $nids= array();
       foreach ($result as $record) {
         $r = $record->fetchObject();
-        $nodes[] = node_load($r->nid);
+        $nids[] = $record->nid;
       }
+      $nodes = node_load_multiple($nids);
 
       // Allow modules to alter the list of nodes by implementing a hook.
       // Design pattern from comment_invoke_comment().
@@ -514,11 +506,51 @@ function similarterms_taxonomy_get_vocabularies() {
 }
 
 /**
+ * This function gets all taxonomy vocabularies for a certain node.
+ */
+function similarterms_taxonomy_node_get_terms($node) {
+  $terms = &drupal_static(__FUNCTION__);
+
+  $fields = field_info_fields();
+  $story_vocabs = array();
+  foreach ($fields as $field_name => $field) {
+    if ($field['type'] == 'taxonomy_term_reference' && !empty($field['bundles']['node']) && in_array($node->type, $field['bundles']['node'])) {
+      foreach(field_get_items('node', $node, $field['field_name']) as $item) {
+        $terms[$node->vid]['tid'][$item['tid']] = $item['taxonomy_term'];
+      }
+    }
+  }
+
+  return $terms[$node->vid]['tid'];
+}
+
+/**
+ * This function gets taxonomy vocabularies for $vid for a certain node
+ */
+function similarterms_taxonomy_node_get_terms_by_vocabulary($node, $vid) {
+  $terms = &drupal_static(__FUNCTION__);
+
+  $fields = field_info_fields();
+  $story_vocabs = array();
+  foreach ($fields as $field_name => $field) {
+    if ($field['type'] == 'taxonomy_term_reference' && !empty($field['bundles']['node']) && in_array($node->type, $field['bundles']['node'])) {
+      foreach(field_get_items('node', $node, $field['field_name']) as $item) {
+        if ($item['taxonomy_term']->vid == $vid) {
+          $terms[$node->vid]['tid'][$item['tid']] = $item['taxonomy_term'];
+        }
+      }
+    }
+  }
+
+  return $terms[$node->vid]['tid'];
+}
+
+/**
  * Implements hook_menui().
  */
 function  similarterms_menu() {
   // Admin settings for the site.
-  $items['admin/settings/similarterms'] = array(
+  $items['admin/config/content/similarterms'] = array(
     'title' => 'Similar By Terms',
     'description' => 'Basic Settings for similar term most settings are in the blocks config.',
     'page callback' => 'drupal_get_form',
@@ -531,15 +563,36 @@ function  similarterms_menu() {
 }
 
 /**
- * Theme function for similar block
- *
+ * Implements hook_theme().
  */
 function similarterms_theme() {
   return array(
     'similarterms' => array(
       'template'  => 'similarterms',
-      'arguments' => array('display_options' => NULL, 'items' => NULL),
+      'variables' => array('display_options' => NULL, 'nodes' => NULL),
     ),
   );
+}
+
+/**
+ * Preprocess for similarterms.tpl.php.
+ *
+ * @todo: Needs to be converted to renderable array output.
+ */
+function template_preprocess_similarterms(&$variables) {
+  $links = array();
+  $nodes = $variables['nodes'];
+
+  foreach ($nodes as $node) {
+    if ($variables['display_options'] == 'teaser') {
+      $teaser = ' - ' . $node->teaser;
+    }
+    else {
+      $teaser = '';
+    }
+    $links[] = l($node->title, 'node/'. $node->nid) . $teaser;
+  }
+
+  $variables['items'] = theme('item_list', array('items' => $links));
 }
 

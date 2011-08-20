@@ -8,18 +8,7 @@
 /**
  * Module settings page.
  */
-function similarterms_admin_settings(&$form_state) {
-  $vocabularies_options = array(
-    'multi_select_and_tags' => t('Display multi-select and tags types only'),
-    'all' => t('Display all vocabularies types'),
-    );
-  $form['similarterms_vocabularies'] = array(
-    '#type' => 'radios',
-    '#title' => t('Vocabularies types to list'),
-    '#default_value' => variable_get("similarterms_vocabularies", 'multi_select_and_tags'),
-    '#options' => $vocabularies_options,
-    '#required' => FALSE,
-  );
+function similarterms_admin_settings($form, &$form_state) {
   $display_options = array(
     'title_only' => t('Display titles only'),
     'teaser' => t('Display titles and teaser'),
@@ -106,5 +95,3 @@ function similarterms_admin_settings_submit($form, &$form_state) {
     drupal_set_message(t('Similarterms Block Cache is now cleared'));
   }
 }
-
-
