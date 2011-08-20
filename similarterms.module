@@ -147,8 +147,12 @@ function similarterms_block_configure($delta = '') {
 function similarterms_block_save($delta = '', $edit = array()) {
   variable_set('simterms_count_' . $delta, $edit['count']);
   variable_set('simterms_sametype_' . $delta, $edit['sametype']);
-  variable_set('simterms_ignoreterms_' . $delta, $edit['ignoreterms']);
   variable_set('similarterms_showcurrentnode_' . $delta, $edit['showcurrentnode']);
+
+  //Only conditionally shown in the edit form, so not always set.
+  if (isset($edit['ignoreterms'])) {
+    variable_set('simterms_ignoreterms_' . $delta, $edit['ignoreterms']);
+  }
 }
 
 /**
