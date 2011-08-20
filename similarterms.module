@@ -214,7 +214,7 @@ function similarterms_list($vocid = 'all', $nid = NULL) {
       $query = db_select('node', 'n');
       $query->addField('n', 'nid');
       $query->addExpression('COUNT(n.nid)', 'ncount');
-      $query->innerJoin('term_node', 'tn', 'n.vid = tn.vid');
+      $query->innerJoin('taxonomy_term_data', 'tn', 'n.vid = tn.vid');
       $query->condition('tn.tid', $terms, 'IN');
 
       $types = variable_get('simterms_sametype_' . $vocid, FALSE);
