@@ -577,7 +577,7 @@ function similarterms_theme() {
   return array(
     'similarterms' => array(
       'template'  => 'similarterms',
-      'variables' => array('display_options' => NULL, 'nodes' => NULL),
+      'variables' => array('display_options' => NULL, 'always_display_block' => NULL, 'nodes' => NULL),
     ),
   );
 }
