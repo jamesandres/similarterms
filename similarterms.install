@@ -106,5 +106,5 @@ function similarterms_update_7102() {
   $schema['cache_similarterms']['module'] = 'similarterms';
   $schema['cache_similarterms']['description'] = 'Cache table for the Similar by Terms Module.';
   db_create_table('cache_similarterms', $schema['cache_similarterms']);
-  variable_del('multi_select_and_tags');  
+  variable_del('multi_select_and_tags');
 }
