@@ -105,4 +105,5 @@ function similarterms_update_7102() {
   $schema['cache_similarterms'] = drupal_get_schema_unprocessed('system', 'cache');
   $schema['cache_similarterms']['module'] = 'similarterms';
   $schema['cache_similarterms']['description'] = 'Cache table for the Similar by Terms Module.';
+  db_create_table('cache_similarterms', $schema['cache_similarterms']);
 }
