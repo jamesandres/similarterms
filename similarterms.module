@@ -67,6 +67,7 @@ function similarterms_block_view($delta = '') {
     'subject' => t('Similar'),
     'content' => theme('similarterms', array(
       'display_options' => variable_get('similarterms_display_options', 'title_only'),
+      'always_display_block' => variable_get('similarterms_display_block_' . $delta, FALSE),
       'nodes' => similarterms_list($delta),
     )),
   );
@@ -74,7 +75,7 @@ function similarterms_block_view($delta = '') {
 }
 
 /**
- * Implements hook_block_view().
+ * Implements hook_block_configure().
  */
 function similarterms_block_configure($delta = '') {
   $form['count'] = array(
@@ -89,6 +90,13 @@ function similarterms_block_configure($delta = '') {
     '#type' => 'checkbox',
     '#title' => t('Show current node as active in the list'),
     '#default_value' => variable_get('similarterms_showcurrentnode_' . $delta, FALSE),
+    '#required' => FALSE,
+  );
+  //addition to decide if to always display the block
+  $form['show_display_block'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Hide block when there is nothing to list'),
+    '#default_value' => variable_get('similarterms_display_block_' . $delta, TRUE),
     '#required' => FALSE,
   );
   //mimo addition to configuration to limit to same page type
@@ -138,6 +146,7 @@ function similarterms_block_save($delta = '', $edit = array()) {
   variable_set('simterms_count_' . $delta, $edit['count']);
   variable_set('simterms_sametype_' . $delta, $edit['sametype']);
   variable_set('similarterms_showcurrentnode_' . $delta, $edit['showcurrentnode']);
+  variable_set('similarterms_display_block_' . $delta, $edit['show_display_block']);
 
   //Only conditionally shown in the edit form, so not always set.
   if (isset($edit['ignoreterms'])) {
@@ -189,14 +198,13 @@ function similarterms_list($vocid = 'all', $nid = NULL) {
       }
     }
     $node_obj = node_load($nid);
-
     if ($vocid == 'all') {
       $terms = array_keys(similarterms_taxonomy_node_get_terms($node_obj));
     }
     else {
       $terms = array_keys(similarterms_taxonomy_node_get_terms_by_vocabulary($node_obj, $vocid));
     }
-
+    
     // Filter out some terms
     $terms_filter = variable_get('simterms_ignoreterms_' . $vocid, array());
 
@@ -214,10 +222,11 @@ function similarterms_list($vocid = 'all', $nid = NULL) {
       $query = db_select('node', 'n');
       $query->addField('n', 'nid');
       $query->addExpression('COUNT(n.nid)', 'ncount');
-      $query->innerJoin('taxonomy_term_data', 'tn', 'n.vid = tn.vid');
-      $query->condition('tn.tid', $terms, 'IN');
+      $query->innerJoin('taxonomy_index', 'ti', 'n.nid = ti.nid');
+      $query->condition('ti.tid', $terms, 'IN');
 
       $types = variable_get('simterms_sametype_' . $vocid, FALSE);
+      
       if (($types !== FALSE) && is_array($types) && count($types) > 0 && ($types['0'] == NULL) ) {
         if ($types[1]) {
           $node_obj = node_load($nid);
@@ -253,7 +262,6 @@ function similarterms_list($vocid = 'all', $nid = NULL) {
       $result = $query->execute();
       $nids= array();
       foreach ($result as $record) {
-        $r = $record->fetchObject();
         $nids[] = $record->nid;
       }
       $nodes = node_load_multiple($nids);
@@ -582,7 +590,8 @@ function similarterms_theme() {
 function template_preprocess_similarterms(&$variables) {
   $links = array();
   $nodes = $variables['nodes'];
-
+  $always_display_block = $variables['always_display_block'];
+  $variables['display_block'] = true;
   foreach ($nodes as $node) {
     if ($variables['display_options'] == 'teaser') {
       $teaser = ' - ' . $node->teaser;
@@ -594,5 +603,8 @@ function template_preprocess_similarterms(&$variables) {
   }
 
   $variables['items'] = theme('item_list', array('items' => $links));
+  if(!$nodes && $always_display_block) {
+    $variables['display_block'] = false;
+  }
 }
 
