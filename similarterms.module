@@ -61,7 +61,7 @@ function similarterms_block_info() {
   else {
     foreach (taxonomy_get_vocabularies() as $v) {
       // this only makes sense for multi-select vocabularies and free tagging
-      if ($v->multiple || $v->tags) {
+      if (isset($v->multiple) || isset($v->tags)) {
         $blocks[$v->vid] = array(
           'info' => t('Similar entries from the @vocab vocabulary.', array('@vocab' => $v->name)),
           'cache' => DRUPAL_CACHE_PER_ROLE | DRUPAL_CACHE_PER_PAGE
