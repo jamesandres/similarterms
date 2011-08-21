@@ -67,7 +67,6 @@ function similarterms_block_view($delta = '') {
     'subject' => t('Similar'),
     'content' => theme('similarterms', array(
       'display_options' => variable_get('similarterms_display_options', 'title_only'),
-      'always_display_block' => variable_get('similarterms_display_block_' . $delta, FALSE),
       'nodes' => similarterms_list($delta),
     )),
   );
@@ -81,7 +80,7 @@ function similarterms_block_configure($delta = '') {
   $form['count'] = array(
     '#type' => 'textfield',
     '#title' => t('Item count'),
-    '#default_value' => variable_get('simterms_count_' . $delta, 5),
+    '#default_value' => variable_get('similarterms_count_' . $delta, 5),
     '#size' => 3,
     '#description' => t('The maximum number of similar items to display'),
   );
@@ -90,13 +89,6 @@ function similarterms_block_configure($delta = '') {
     '#type' => 'checkbox',
     '#title' => t('Show current node as active in the list'),
     '#default_value' => variable_get('similarterms_showcurrentnode_' . $delta, FALSE),
-    '#required' => FALSE,
-  );
-  //addition to decide if to always display the block
-  $form['show_display_block'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Hide block when there is nothing to list'),
-    '#default_value' => variable_get('similarterms_display_block_' . $delta, TRUE),
     '#required' => FALSE,
   );
   //mimo addition to configuration to limit to same page type
@@ -108,7 +100,7 @@ function similarterms_block_configure($delta = '') {
   $form['sametype'] = array(
     '#type' => 'select',
     '#title' => t('Content type limit'),
-    '#default_value' => variable_get('simterms_sametype_' . $delta, FALSE),
+    '#default_value' => variable_get('similarterms_sametype_' . $delta, FALSE),
     '#options' => $types,
     '#description' => t('Limit to pages of this or these content type(s)'),
     '#multiple' => TRUE
@@ -122,7 +114,7 @@ function similarterms_block_configure($delta = '') {
     $form['ignoreterms'] = array(
       '#type' => 'select',
       '#title' => t('Terms to be ignored'),
-      '#default_value' => variable_get('simterms_ignoreterms_' . $delta, array()),
+      '#default_value' => variable_get('similarterms_ignoreterms_' . $delta, array()),
       '#options' => $terms,
       '#description' => t('Ignore selected terms here from being used to search for similar entries'),
       '#multiple' => TRUE
@@ -143,14 +135,13 @@ function similarterms_block_configure($delta = '') {
  *   None. Values are saved as system variables.
  */
 function similarterms_block_save($delta = '', $edit = array()) {
-  variable_set('simterms_count_' . $delta, $edit['count']);
-  variable_set('simterms_sametype_' . $delta, $edit['sametype']);
+  variable_set('similarterms_count_' . $delta, $edit['count']);
+  variable_set('similarterms_sametype_' . $delta, $edit['sametype']);
   variable_set('similarterms_showcurrentnode_' . $delta, $edit['showcurrentnode']);
-  variable_set('similarterms_display_block_' . $delta, $edit['show_display_block']);
 
   //Only conditionally shown in the edit form, so not always set.
   if (isset($edit['ignoreterms'])) {
-    variable_set('simterms_ignoreterms_' . $delta, $edit['ignoreterms']);
+    variable_set('similarterms_ignoreterms_' . $delta, $edit['ignoreterms']);
   }
 }
 
@@ -171,7 +162,7 @@ function similarterms_list($vocid = 'all', $nid = NULL) {
   $list_num = 0;
   $sql = "";
   $cache_lifetime = variable_get('similarterms_cache_options', 3600);
-  $count = variable_get('simterms_count_' . $vocid, 5);
+  $count = variable_get('similarterms_count_' . $vocid, 5);
 
   if (arg(0) == 'node' && is_numeric(arg(1)) && !$nid) {
     $nid = arg(1);
@@ -206,7 +197,7 @@ function similarterms_list($vocid = 'all', $nid = NULL) {
     }
 
     // Filter out some terms
-    $terms_filter = variable_get('simterms_ignoreterms_' . $vocid, array());
+    $terms_filter = variable_get('similarterms_ignoreterms_' . $vocid, array());
 
     foreach ($terms_filter as $v) {
       $idx = array_search($v, $terms);
@@ -225,7 +216,7 @@ function similarterms_list($vocid = 'all', $nid = NULL) {
       $query->innerJoin('taxonomy_index', 'ti', 'n.nid = ti.nid');
       $query->condition('ti.tid', $terms, 'IN');
 
-      $types = variable_get('simterms_sametype_' . $vocid, FALSE);
+      $types = variable_get('similarterms_sametype_' . $vocid, FALSE);
 
       if (($types !== FALSE) && is_array($types) && count($types) > 0 && ($types['0'] == NULL) ) {
         if ($types[1]) {
@@ -322,7 +313,7 @@ function similarterms_form_alter(&$form, &$form_state, $form_id) {
       if (! $blocks[$v->vid]) {
         continue;
       }
-      $types = variable_get('simterms_sametype_' . $v->vid, array('0' => '0'));
+      $types = variable_get('similarterms_sametype_' . $v->vid, array('0' => '0'));
       if (! $types[$node_type] && ! isset($types[0])) {
         continue;
       }
@@ -339,7 +330,7 @@ function similarterms_form_alter(&$form, &$form_state, $form_id) {
         '#title' => t('Paths'),
         '#tree' => 1,
       );
-      $count = variable_get('simterms_count_' . $v->vid, 5);
+      $count = variable_get('similarterms_count_' . $v->vid, 5);
       for ($i = 0; $i < $count; $i++) {
         $default_value = '';
         if ($overrides[$v->vid][$i]) {
@@ -577,7 +568,7 @@ function similarterms_theme() {
   return array(
     'similarterms' => array(
       'template'  => 'similarterms',
-      'variables' => array('display_options' => NULL, 'always_display_block' => NULL, 'nodes' => NULL),
+      'variables' => array('display_options' => NULL, 'nodes' => NULL),
     ),
   );
 }
@@ -590,21 +581,20 @@ function similarterms_theme() {
 function template_preprocess_similarterms(&$variables) {
   $links = array();
   $nodes = $variables['nodes'];
-  $always_display_block = $variables['always_display_block'];
-  $variables['display_block'] = TRUE;
-  foreach ($nodes as $node) {
-    if ($variables['display_options'] == 'teaser') {
-      $teaser = ' - ' . $node->teaser;
+  if ($nodes) {
+    foreach ($nodes as $node) {
+      if ($variables['display_options'] == 'teaser') {
+        $teaser = ' - ' . $node->teaser;
+      }
+      else {
+        $teaser = '';
+      }
+      $links[] = l($node->title, 'node/' . $node->nid) . $teaser;
     }
-    else {
-      $teaser = '';
-    }
-    $links[] = l($node->title, 'node/' . $node->nid) . $teaser;
+    $variables['items'] = theme('item_list', array('items' => $links));
   }
-
-  $variables['items'] = theme('item_list', array('items' => $links));
-  if (!$nodes && $always_display_block) {
-    $variables['display_block'] = FALSE;
+  else {
+    $variables['items'] = "";
   }
 }
 
