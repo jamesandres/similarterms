@@ -63,11 +63,12 @@ function similarterms_block_info() {
  * Implements hook_block_view().
  */
 function similarterms_block_view($delta = '') {
+  $vocid = $delta ? $delta : 'all';
   $block = array(
     'subject' => t('Similar'),
     'content' => theme('similarterms', array(
       'display_options' => variable_get('similarterms_display_options', 'title_only'),
-      'nodes' => similarterms_list($delta),
+      'nodes' => similarterms_list($vocid),
     )),
   );
   return $block;
