@@ -168,7 +168,6 @@ function similarterms_list($vocid = 'all', $nid = NULL) {
   if (arg(0) == 'node' && is_numeric(arg(1)) && !$nid) {
     $nid = arg(1);
   }
-
   if ($nid != NULL) {
     $cid = "$vocid:$nid";
     if ($cache_lifetime) {
@@ -218,11 +217,10 @@ function similarterms_list($vocid = 'all', $nid = NULL) {
       $query->condition('ti.tid', $terms, 'IN');
 
       $types = variable_get('similarterms_sametype_' . $vocid, FALSE);
-
-      if (($types !== FALSE) && is_array($types) && count($types) > 0 && ($types['0'] == NULL) ) {
-        if ($types[1]) {
-          $node_obj = node_load($nid);
-          $types[1] = $node_obj->type;
+      if (($types !== FALSE) && is_array($types) && count($types) > 0 && (!isset($types['0']))) {
+        if (isset($types['1'])) {
+            unset($types['1']);
+            $types[$node_obj->type] = $node_obj->type;
         }
         $query->condition('n.type', $types, 'IN');
       }

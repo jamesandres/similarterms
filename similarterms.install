@@ -119,7 +119,7 @@ function commentcloser_update_7000(&$context) {
   foreach ($vocab as $v) {
     variable_set("similarterms_count_$v->vid", variable_get("simterms_count_$v->vid"));
     variable_del("simterms_count_$v->vid");
-    
+
     variable_set("similarterms_sametype_$v->vid", variable_get("simterms_sametype_$v->vid"));
     variable_del("simterms_sametype_$v->vid");
 
@@ -129,7 +129,7 @@ function commentcloser_update_7000(&$context) {
 
     variable_set("similarterms_count_all", variable_get("simterms_count_all"));
     variable_del("simterms_count_all");
-    
+
     variable_set("similarterms_sametype_all", variable_get("simterms_sametype_all"));
     variable_del("simterms_sametype_all");
 
