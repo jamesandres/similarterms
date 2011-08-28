@@ -194,7 +194,7 @@ function similarterms_list($vocid = 'all', $nid = NULL) {
       $terms = array_keys(similarterms_taxonomy_node_get_terms($node_obj));
     }
     else {
-      $terms = array_keys(similarterms_taxonomy_node_get_terms_by_vocabulary($node_obj, $vocid));
+      $terms = array_keys(similarterms_taxonomy_node_get_terms($node_obj, $vocid));
     }
 
     // Filter out some terms
@@ -506,9 +506,9 @@ function similarterms_taxonomy_get_vocabularies() {
 }
 
 /**
- * This function gets all taxonomy vocabularies for a certain node.
+ * This function gets all taxonomy vocabularies for a certain node with option limits for Vocabularies
  */
-function similarterms_taxonomy_node_get_terms($node) {
+function similarterms_taxonomy_node_get_terms($node, $vid = NULL) {
   $terms = &drupal_static(__FUNCTION__);
 
   $fields = field_info_fields();
@@ -516,27 +516,8 @@ function similarterms_taxonomy_node_get_terms($node) {
   foreach ($fields as $field_name => $field) {
     if ($field['type'] == 'taxonomy_term_reference' && !empty($field['bundles']['node']) && in_array($node->type, $field['bundles']['node'])) {
       foreach (field_get_items('node', $node, $field['field_name']) as $item) {
-        $terms[$node->vid]['tid'][$item['tid']] = $item['taxonomy_term'];
-      }
-    }
-  }
-
-  return $terms[$node->vid]['tid'];
-}
-
-/**
- * This function gets taxonomy vocabularies for $vid for a certain node
- */
-function similarterms_taxonomy_node_get_terms_by_vocabulary($node, $vid) {
-  $terms = &drupal_static(__FUNCTION__);
-
-  $fields = field_info_fields();
-  $story_vocabs = array();
-  foreach ($fields as $field_name => $field) {
-    if ($field['type'] == 'taxonomy_term_reference' && !empty($field['bundles']['node']) && in_array($node->type, $field['bundles']['node'])) {
-      foreach (field_get_items('node', $node, $field['field_name']) as $item) {
-        if ($item['taxonomy_term']->vid == $vid) {
-          $terms[$node->vid]['tid'][$item['tid']] = $item['taxonomy_term'];
+        if (($vid == NULL) || ($item['taxonomy_term']->vid == $vid)) {
+            $terms[$node->vid]['tid'][$item['tid']] = $item['taxonomy_term'];
         }
       }
     }
