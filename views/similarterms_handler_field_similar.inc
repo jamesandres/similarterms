@@ -26,7 +26,6 @@ class similarterms_handler_field_similar extends views_handler_field {
       '#title' => t('Append % when showing percentage'),
       '#default_value' => !empty($this->options['percent_suffix']),
     );
-
   }
 
   function query() {
@@ -35,10 +34,10 @@ class similarterms_handler_field_similar extends views_handler_field {
 
   function render($values) {
     if ($this->options['count_type'] == 0) {
-      return $values->node_count;
+      return $values->node_nid;
     }
     elseif ($this->view->tids) {
-      $output = round($values->node_count / count($this->view->tids) * 100);
+      $output = round($values->node_nid / count($this->view->tids) * 100);
       if (!empty($this->options['percent_suffix'])) {
         $output .= '%';
       }
