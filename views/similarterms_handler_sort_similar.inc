@@ -1,0 +1,18 @@
+<?php
+
+class similarterms_handler_sort_similar extends views_handler_sort {
+
+  function option_definition() {
+    $options = parent::option_definition();
+    $options['order'] = array('default' => 'DESC');
+    return $options;
+  }
+
+  function query() {
+    $this->ensure_my_table();
+    $this->query->add_field(NULL, 'COUNT(node.nid)', 'node_count', array('aggregate' => TRUE));
+    $this->query->add_orderby(NULL, NULL, $this->options['order'], 'node_count');
+    $this->query->add_groupby('node.nid');
+  }
+
+}

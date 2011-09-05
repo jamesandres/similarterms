@@ -1,138 +1,28 @@
 <?php
-
 /**
  * @file
- * Similar By Terms install file
+ * Install, update and uninstall functions for the similarterms module.
+ *
  */
 
-/**
- * Implements hook_schema().
- */
-function similarterms_schema() {
-  $schema['similarterms_override'] = array(
-    'module' => 'similarterms',
-    'description' => 'Override information for the similarterms blocks implemented as node type.',
-    'fields' => array(
-      'nid' => array(
-        'description' => 'Node identifier',
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'vid' => array(
-        'description' => 'Version identifier',
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'path' => array(
-        'description' => 'Node Id to point to of overide',
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-        'size' => 'tiny',
-      ),
-      'weight' => array(
-        'description' => 'Node weight',
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-        'size' => 'tiny',
-      ),
-    ),
-    'indexes' => array(
-      'nid' => array('nid'),
-      'vid' => array('vid'),
-    ),
-  );
-  $schema['cache_similarterms'] = drupal_get_schema_unprocessed('system', 'cache');
-  $schema['cache_similarterms']['module'] = 'similarterms';
-  $schema['cache_similarterms']['description'] = 'Cache table for the Similar by Terms Module.';
 
-  return $schema;
-}
 
 /**
  * Implements hook_update().
  */
-function similarterms_update_7102() {
-  $schema['similarterms_override'] = array(
-    'module' => 'similarterms',
-    'description' => 'Override information for the similarterms blocks implemented as node type.',
-    'fields' => array(
-      'nid' => array(
-        'description' => 'Node identifier',
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'vid' => array(
-        'description' => 'Version identifier',
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'path' => array(
-        'description' => 'Node Id to point to of overide',
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-        'size' => 'tiny',
-      ),
-      'weight' => array(
-        'description' => 'Node weight',
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-        'size' => 'tiny',
-      ),
-    ),
-    'indexes' => array(
-      'nid' => array('nid'),
-      'vid' => array('vid'),
-    ),
-  );
-  if (!db_table_exists('similarterms_override')) {
-    db_create_table('similarterms_override', $schema['similarterms_override']);
-  }
-  if (db_table_exists('cache_similarterms')) {
-    db_drop_table('cache_similarterms');
-  }
-  $schema['cache_similarterms'] = drupal_get_schema_unprocessed('system', 'cache');
-  $schema['cache_similarterms']['module'] = 'similarterms';
-  $schema['cache_similarterms']['description'] = 'Cache table for the Similar by Terms Module.';
-  db_create_table('cache_similarterms', $schema['cache_similarterms']);
-  variable_del('multi_select_and_tags');
-}
+function similarterms_update_6200() {
+  $ret = array();
 
-/**
- * Implements hook_update_N().
- *
- * Change from simterms_xxx to similarterms_xxx.
- */
-function commentcloser_update_7000(&$context) {
-  $vocab = taxonomy_get_vocabularies();
-  foreach ($vocab as $v) {
-    variable_set("similarterms_count_$v->vid", variable_get("simterms_count_$v->vid"));
-    variable_del("simterms_count_$v->vid");
+  // Intentially removed to prevent confusion.
+  //   I don't want administrators to think that their settings have been converted.
 
-    variable_set("similarterms_sametype_$v->vid", variable_get("simterms_sametype_$v->vid"));
-    variable_del("simterms_sametype_$v->vid");
+  // only the 'ANY vocabulary' block is converted... without any settings:
+  //$ret[] = update_sql("UPDATE {block} SET module='views', delta='similarterms-block_1' WHERE module='similarterms' AND delta=0");
 
-    variable_set("similarterms_ignoreterms_$v->vid", variable_get("simterms_ignoreterms_$v->vid"));
-    variable_del("simterms_ignoreterms_$v->vid");
-  }
-
-    variable_set("similarterms_count_all", variable_get("simterms_count_all"));
-    variable_del("simterms_count_all");
-
-    variable_set("similarterms_sametype_all", variable_get("simterms_sametype_all"));
-    variable_del("simterms_sametype_all");
-
-    variable_set("similarterms_ignoreterms_all", variable_get("simterms_ignoreterms_all"));
-    variable_del("simterms_ignoreterms_all");
+  cache_clear_all('*', 'cache_block', TRUE);
+  cache_clear_all('*', 'cache_views', true);
+  // hook_update_N() no longer returns a $ret array. Instead, return
+  // nothing or a translated string indicating the update ran successfully.
+  // See http://drupal.org/node/224333#update_sql.
+  return t('TODO Add a descriptive string here to show in the UI.') /* $ret */;
 }
