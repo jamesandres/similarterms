@@ -114,7 +114,7 @@ class similarterms_handler_argument_node_nid extends views_handler_argument_nume
     return TRUE;
   }
 
-  function query() {
+  function query($group_by = FALSE) {
     $this->ensure_my_table();
 
     $this->query->add_table('taxonomy_index', NULL, NULL, 'similarterms_taxonomy_index');
