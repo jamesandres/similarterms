@@ -1,0 +1,303 @@
+<?php
+
+/**
+ * @file
+ * Definition of similarTermsTestCase.
+ *
+ * @todo
+ * - Test the vocbular option in the argument handler.
+ * - Test the field_similar, sort_similar handler.
+ */
+
+/**
+ * Tests functionality of similar terms module.
+ */
+class similarTermsTestCase extends TaxonomyWebTestCase {
+  /**
+   * Stores all nids.
+   * @var array
+   */
+  public $nids;
+
+  /**
+   * Stores all tids.
+   * @var array
+   */
+  public $tids;
+
+  /**
+   * Stores all node-id's keyed by tid.
+   * @var array
+   */
+  public $nodes_per_term;
+
+  /**
+   * Contains the used vocabulary.
+   */
+  public $vocabulary;
+  public $node_type;
+  public $field;
+  public $field_name;
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Similarterms',
+      'description' => 'Test the Similarterms module',
+      'group' => 'Similarterms',
+    );
+  }
+  protected function setUp() {
+    parent::setUp('views', 'taxonomy', 'node', 'similarterms');
+
+    // Create a vocabulary and some terms.
+    $this->vocabulary = $this->createVocabulary();
+    for ($i = 0; $i < 3; $i++) {
+      $term = $this->createTerm($this->vocabulary);
+      $this->tids[] = $term->tid;
+    }
+
+    // Create a nodetype and attach a taxonomy field to it.
+    $this->node_type = $this->drupalCreateContentType();
+    $this->field_name = 'field_test_taxonomy';
+    $this->field = array(
+      'field_name' => $this->field_name,
+      'type' => 'taxonomy_term_reference',
+      'cardinality' => FIELD_CARDINALITY_UNLIMITED,
+      'settings' => array(
+        'allowed_values' => array(
+          array(
+            'vocabulary' => $this->vocabulary->machine_name,
+            'parent' => 0,
+          ),
+        ),
+      ),
+    );
+    field_create_field($this->field);
+    $this->instance = array(
+      'field_name' => $this->field_name,
+      'bundle' => $this->node_type->type,
+      'entity_type' => 'node',
+      'widget' => array(
+        'type' => 'options_select',
+      ),
+      'display' => array(
+        'default' => array(
+          'type' => 'taxonomy_term_reference_link',
+        ),
+      ),
+    );
+    field_create_instance($this->instance);
+
+
+    // Create the used nodes.
+    // First create a node with a term which is not used by other nodes.
+    $this->createNodeWithTerm($this->tids[0]);
+    // Create a node with a term which is is used by the third node as well.
+    $this->createNodeWithTerm($this->tids[1]);
+    // The third node should have the term of the second and forth.
+    $this->createNodeWithTerm(array($this->tids[1], $this->tids[2]));
+    $this->createNodeWithTerm(array($this->tids[2]));
+  }
+
+  /**
+   * Create a node with certain terms.
+   * @param array $tids
+   *   An array of all taxonomy terms.
+   * @param array $edit
+   *   The edit array @see DrupalWebTestCase::drupalCreateNode.
+   */
+  public function createNodeWithTerm($tids, array $edit = array()) {
+    $tids = (array) $tids;
+    if (!isset($edit['type'])) {
+      $edit['type'] = $this->node_type->type;
+    }
+    foreach ($tids as $tid) {
+      $edit[$this->field_name][LANGUAGE_NONE][] = array('tid' => $tid);
+    }
+
+    $node = $this->drupalCreateNode($edit);
+    $this->nids[] = $node->nid;
+    foreach ($tids as $tid) {
+      $this->nodes_per_term[$tid][] = $node->nid;
+    }
+  }
+
+  function testSimilarTerms() {
+    $nid_alias = 'node_nid';
+
+    foreach ($this->nids as $nid) {
+      $node = node_load($nid);
+      $view = $this->viewSimilarTerms();
+      $view->set_display();
+      $view->pre_execute(array($nid));
+      $view->execute();
+      switch ($nid) {
+        case 1:
+          $this->assertEqual(count($view->result), 0, "Take sure that a node without a similar term doesn't generate a view result");
+          break;
+        case 2:
+          $this->assertEqual(count($view->result), 1, "Take sure that the right amount of result are returned");
+          $this->assertIdenticalResultset($view, array(array($nid_alias => 3)));
+          break;
+
+        case 3:
+          $this->assertEqual(count($view->result), 2, "Take sure that the right amount of result are returned");
+          $this->assertIdenticalResultset($view, array(array($nid_alias => 2), array($nid_alias => 4)));
+          break;
+
+        case 4:
+          $this->assertEqual(count($view->result), 1, "Take sure that the right amount of result are returned");
+          $this->assertIdenticalResultset($view, array(array($nid_alias => 4)));
+          break;
+
+      }
+
+      $view->destroy();
+    }
+  }
+
+  function testSimilarTermsIncludeArgs() {
+    foreach ($this->nids as $nid) {
+      $node = node_load($nid);
+      $view = $this->viewSimilarTerms();
+      $view->set_display();
+      $view->pre_execute(array($nid));
+      $view->argument['nid']->options['include_args'] = TRUE;
+      $view->execute();
+      switch ($nid) {
+        case 1:
+          $this->assertEqual(count($view->result), 1, "Take sure that a node without a similar term doesn't generate a view result");
+          $this->assertIdenticalResultset($view, array(array('nid' => 1)), array('node_nid' => 'nid'));
+          break;
+        case 2:
+          $this->assertEqual(count($view->result), 2, "Take sure that the right amount of result are returned");
+          $this->assertIdenticalResultset($view, array(array('nid' => 2), array('nid' => 3)), array('node_nid' => 'nid'));
+          break;
+
+        case 3:
+          $this->assertEqual(count($view->result), 3, "Take sure that the right amount of result are returned");
+          $this->assertIdenticalResultset($view, array(array('nid' => 2), array('nid' => 3), array('nid' => 4)), array('node_nid' => 'nid'));
+          break;
+
+        case 4:
+          $this->assertEqual(count($view->result), 2, "Take sure that the right amount of result are returned");
+          $this->assertIdenticalResultset($view, array(array('nid' => 3), array('nid' => 4)), array('node_nid' => 'nid'));
+          break;
+
+      }
+
+      $view->destroy();
+    }
+  }
+
+  public function viewSimilarTerms() {
+    $view = new view;
+    $view->name = 'test_similarterms';
+    $view->description = '';
+    $view->tag = 'default';
+    $view->base_table = 'node';
+    $view->human_name = 'test_similarterms';
+    $view->core = 7;
+    $view->api_version = '3.0';
+    $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
+
+    /* Display: Master */
+    $handler = $view->new_display('default', 'Master', 'default');
+    $handler->display->display_options['title'] = 'test';
+    $handler->display->display_options['access']['type'] = 'perm';
+    $handler->display->display_options['cache']['type'] = 'none';
+    $handler->display->display_options['query']['type'] = 'views_query';
+    $handler->display->display_options['query']['options']['distinct'] = TRUE;
+    $handler->display->display_options['exposed_form']['type'] = 'basic';
+    $handler->display->display_options['pager']['type'] = 'full';
+    $handler->display->display_options['pager']['options']['items_per_page'] = '10';
+    $handler->display->display_options['style_plugin'] = 'default';
+    $handler->display->display_options['row_plugin'] = 'fields';
+    /* Contextual filter: Similar By Terms: Nid */
+    $handler->display->display_options['arguments']['nid']['id'] = 'nid';
+    $handler->display->display_options['arguments']['nid']['table'] = 'similarterms';
+    $handler->display->display_options['arguments']['nid']['field'] = 'nid';
+    $handler->display->display_options['arguments']['nid']['default_argument_type'] = 'fixed';
+    $handler->display->display_options['arguments']['nid']['summary']['number_of_records'] = '0';
+    $handler->display->display_options['arguments']['nid']['summary']['format'] = 'default_summary';
+    $handler->display->display_options['arguments']['nid']['summary_options']['items_per_page'] = '25';
+    $handler->display->display_options['arguments']['nid']['vocabularies'] = array(
+      1 => 0,
+    );
+    $handler->display->display_options['arguments']['nid']['include_args'] = 0;
+    /* Sort criterion: Content: Nid */
+    $handler->display->display_options['sorts']['nid']['id'] = 'nid';
+    $handler->display->display_options['sorts']['nid']['table'] = 'node';
+    $handler->display->display_options['sorts']['nid']['field'] = 'nid';
+
+    return $view;
+  }
+
+  /**
+   * Helper function: verify a result set returned by view.
+   *
+   * The comparison is done on the string representation of the columns of the
+   * column map, taking the order of the rows into account, but not the order
+   * of the columns.
+   *
+   * @param $view
+   *  An executed View.
+   * @param $expected_result
+   *  An expected result set.
+   * @param $column_map
+   *  An associative array mapping the columns of the result set from the view
+   *  (as keys) and the expected result set (as values).
+   */
+  protected function assertIdenticalResultset($view, $expected_result, $column_map = array(), $message = 'Identical result set') {
+    return $this->assertIdenticalResultsetHelper($view, $expected_result, $column_map, $message, 'assertIdentical');
+  }
+
+  /**
+   * Helper function: verify a result set returned by view..
+   *
+   * Inverse of ViewsTestCase::assertIdenticalResultset().
+   *
+   * @param $view
+   *  An executed View.
+   * @param $expected_result
+   *  An expected result set.
+   * @param $column_map
+   *  An associative array mapping the columns of the result set from the view
+   *  (as keys) and the expected result set (as values).
+   */
+  protected function assertNotIdenticalResultset($view, $expected_result, $column_map = array(), $message = 'Identical result set') {
+    return $this->assertIdenticalResultsetHelper($view, $expected_result, $column_map, $message, 'assertNotIdentical');
+  }
+
+  protected function assertIdenticalResultsetHelper($view, $expected_result, $column_map, $message, $assert_method) {
+    // Convert $view->result to an array of arrays.
+    $result = array();
+    foreach ($view->result as $key => $value) {
+      $row = array();
+      foreach ($column_map as $view_column => $expected_column) {
+        // The comparison will be done on the string representation of the value.
+        $row[$expected_column] = (string) $value->$view_column;
+      }
+      $result[$key] = $row;
+    }
+
+    // Remove the columns we don't need from the expected result.
+    foreach ($expected_result as $key => $value) {
+      $row = array();
+      foreach ($column_map as $expected_column) {
+        // The comparison will be done on the string representation of the value.
+        $row[$expected_column] = (string) (is_object($value) ? $value->$expected_column : $value[$expected_column]);
+      }
+      $expected_result[$key] = $row;
+    }
+
+    // Reset the numbering of the arrays.
+    $result = array_values($result);
+    $expected_result = array_values($expected_result);
+
+    $this->verbose('<pre>Returned data set: ' . print_r($result, TRUE) . "\n\nExpected: ". print_r($expected_result, TRUE));
+
+    // Do the actual comparison.
+    return $this->$assert_method($result, $expected_result, $message);
+  }
+}
