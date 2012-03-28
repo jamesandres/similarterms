@@ -2,7 +2,9 @@
 /**
  * Argument handler to accept a node id.
  * based on node_handler_argument_node_nid except that it doesn't
- * add a where clause to the query
+ * add a where clause to the query.
+ *
+ * @ingroup views_argument_handlers
  */
 class similarterms_handler_argument_node_nid extends views_handler_argument_numeric {
   /**
