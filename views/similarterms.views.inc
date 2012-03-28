@@ -4,6 +4,7 @@
  * Implements hook_views_data()
  **/
 function similarterms_views_data_alter(&$data) {
+  $data['similarterms']['similarterms']['moved to'] = array('node', 'similarterms');
   $data['node']['similarterms'] = array(
     'title' => t('Similarity'),
     'group' => t('Similar By Terms'),
@@ -16,6 +17,7 @@ function similarterms_views_data_alter(&$data) {
       'handler' => 'similarterms_handler_sort_similar',
     ),
   );
+  $data['similarterms']['nid']['moved to'] = array('node', 'similar_nid');
   $data['node']['similar_nid'] = array(
     'title' => t('Nid'),
     'group' => t('Similar By Terms'),
