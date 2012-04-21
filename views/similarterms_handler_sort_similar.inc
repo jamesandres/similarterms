@@ -1,5 +1,9 @@
 <?php
-
+/**
+ * Handler which sorts the by the similarity.
+ *
+ * @ingroups views_sort_handlers
+ */
 class similarterms_handler_sort_similar extends views_handler_sort {
 
   function option_definition() {
