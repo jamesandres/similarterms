@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Shows the similarity of the node.
+ *
+ * @ingroup views_field_handlers
+ */
 class similarterms_handler_field_similar extends views_handler_field {
   function option_definition() {
     $options = parent::option_definition();
